@@ -5,6 +5,7 @@ import { Patches } from '@/pages/Patches'
 import { Forecast } from '@/pages/Forecast'
 import { Scenarios } from '@/pages/Scenarios'
 import { Settings } from '@/pages/Settings'
+import { DriveBanner } from '@/components/ui/DriveBanner'
 
 export function AppShell() {
   const nav = usePlannerStore((s) => s.nav)
@@ -19,6 +20,7 @@ export function AppShell() {
         {nav === 'scenarios' && <Scenarios />}
         {nav === 'settings' && <Settings />}
       </main>
+      <DriveBanner />
     </div>
   )
 }
