@@ -42,9 +42,7 @@ export function Scenarios() {
           const canAfford = result?.canAfford ?? false
           const availableAtStart = result?.availableAtStart ?? 0
           const availableAtEnd = result?.availableAtEnd ?? 0
-          const actualSpend = result?.actualSpend ?? stop.pullsToSpend
           const remainingAfter = result?.remainingAfter ?? 0
-          const spendCapped = actualSpend < stop.pullsToSpend
 
           return (
             <div
@@ -164,19 +162,31 @@ export function Scenarios() {
                 </div>
 
                 {/* Pulls to spend */}
-                <NumberInput
-                  label="Pulls to Spend"
-                  value={stop.pullsToSpend}
-                  min={1}
-                  max={360}
-                  onChange={(v) => updateChainStop(stop.id, { pullsToSpend: v })}
-                  hint="90 = one 50/50, 180 = guaranteed"
-                />
+                <div className="flex flex-col gap-1">
+                  <NumberInput
+                    label="Pulls to Spend"
+                    value={stop.pullsToSpend}
+                    min={1}
+                    max={360}
+                    onChange={(v) => updateChainStop(stop.id, { pullsToSpend: v })}
+                  />
+                  <p className="text-xs text-slate-500">
+                    {idx === 0
+                      ? <>Pity: <span className="text-slate-300">{player.characterBannerPity}</span> · {player.characterBannerGuaranteed ? 'guaranteed' : '50/50'}</>
+                      : '90 = one 50/50 · 180 = guaranteed'}
+                  </p>
+                </div>
 
                 {/* Result */}
                 <div className="flex flex-col gap-1">
                   <span className="label">Pulls Available</span>
                   <div className="flex flex-col gap-0.5 pt-1">
+                    {idx === 0 && player.characterBannerPity > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Pity bonus</span>
+                        <span style={{ color: '#a78bfa' }}>+{player.characterBannerPity}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">At start</span>
                       <span className="text-slate-200 font-medium">{availableAtStart}</span>
@@ -187,7 +197,7 @@ export function Scenarios() {
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">
-                        {spendCapped ? `Spend (capped at ${actualSpend})` : 'After spend'}
+                        {canAfford ? 'After spend' : 'Rolls over'}
                       </span>
                       <span style={{ color: '#34d399', fontWeight: 500 }}>
                         +{remainingAfter}
@@ -238,8 +248,8 @@ export function Scenarios() {
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', color: '#e2e8f0', fontWeight: 600 }}>{r.availableAtStart}</td>
                     <td style={{ padding: '0.5rem 0.75rem', color: '#a78bfa', fontWeight: 600 }}>{r.availableAtEnd}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: r.actualSpend < r.stop.pullsToSpend ? '#fbbf24' : '#94a3b8' }}>
-                      {r.actualSpend}{r.actualSpend < r.stop.pullsToSpend ? ` / ${r.stop.pullsToSpend}` : ''}
+                    <td style={{ padding: '0.5rem 0.75rem', color: r.canAfford ? '#94a3b8' : '#f87171' }}>
+                      {r.canAfford ? r.stop.pullsToSpend : `skip (${r.stop.pullsToSpend})`}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#34d399' : '#f87171' }}>
                       {r.remainingAfter >= 0 ? '+' : ''}{r.remainingAfter}

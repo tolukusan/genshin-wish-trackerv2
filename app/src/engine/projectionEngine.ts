@@ -279,6 +279,7 @@ export function runChain(input: {
 
   const results: ChainStopResult[] = []
   let deficit = 0
+  let isFirst = true
 
   for (const stop of chain) {
     const patch = patches.find((p) => p.id === stop.patchId)
@@ -294,13 +295,17 @@ export function runChain(input: {
     const snapStart = computeSnapshot(player, config, patches, phaseDate, today)
     const snapEnd = computeSnapshot(player, config, patches, phaseEnd, today)
 
-    const availableAtStart = snapStart.totalPulls - deficit
-    const availableAtEnd = snapEnd.totalPulls - deficit
-    const actualSpend = Math.min(stop.pullsToSpend, Math.max(0, availableAtEnd))
+    // Pity is already-spent progress toward the next 5-star — add it only on the first stop.
+    const pityBonus = isFirst ? player.characterBannerPity : 0
+
+    const availableAtStart = snapStart.totalPulls - deficit + pityBonus
+    const availableAtEnd = snapEnd.totalPulls - deficit + pityBonus
     const canAfford = availableAtEnd >= stop.pullsToSpend
+    const actualSpend = canAfford ? stop.pullsToSpend : 0
     const remainingAfter = availableAtEnd - actualSpend
 
     deficit += actualSpend
+    isFirst = false
 
     results.push({
       stop,

@@ -27,9 +27,9 @@ const defaultRecurring: RecurringConfig = {
     battlePassPaidPrimos: 680,
     battlePassPaidFates: 4,
     trialPrimosPerPhase: 40,
-    defaultEventCount: 3,
+    defaultEventCount: 4,
     defaultEventPrimos: 420,
-    defaultEventPhase2Count: 1,
+    defaultEventPhase2Count: 2,
     bannerDurationDays: 20,
     patchLengthDays: 42,
     phase2OffsetDays: 21,
@@ -400,14 +400,21 @@ export const usePlannerStore = create<PlannerStore>()(
                 })),
 
             addChainStop: () => {
-                const { patches } = get();
+                const { patches, chain, player, config } = get();
                 const firstPatch = patches[0];
+                const isFirst = chain.length === 0;
+                const pullsToSpend = isFirst
+                    ? player.characterBannerGuaranteed
+                        ? config.hardPityCharacter - player.characterBannerPity
+                        : config.hardPityCharacter * 2 -
+                          player.characterBannerPity
+                    : config.hardPityCharacter * 2;
                 const stop: ChainStop = {
                     id: nanoid(),
                     patchId: firstPatch?.id ?? "",
                     phase: 1,
                     label: "",
-                    pullsToSpend: 90,
+                    pullsToSpend,
                 };
                 set((s) => ({ chain: [...s.chain, stop] }));
             },
