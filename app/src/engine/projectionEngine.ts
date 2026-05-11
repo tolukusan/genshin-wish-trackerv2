@@ -296,10 +296,11 @@ export function runChain(input: {
 
     const availableAtStart = snapStart.totalPulls - deficit
     const availableAtEnd = snapEnd.totalPulls - deficit
+    const actualSpend = Math.min(stop.pullsToSpend, Math.max(0, availableAtEnd))
     const canAfford = availableAtEnd >= stop.pullsToSpend
-    const remainingAfter = availableAtEnd - stop.pullsToSpend
+    const remainingAfter = availableAtEnd - actualSpend
 
-    deficit += stop.pullsToSpend
+    deficit += actualSpend
 
     results.push({
       stop,
@@ -310,6 +311,7 @@ export function runChain(input: {
       daysToEnd,
       availableAtStart,
       availableAtEnd,
+      actualSpend,
       canAfford,
       remainingAfter,
     })

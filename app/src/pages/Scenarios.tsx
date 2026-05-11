@@ -42,7 +42,9 @@ export function Scenarios() {
           const canAfford = result?.canAfford ?? false
           const availableAtStart = result?.availableAtStart ?? 0
           const availableAtEnd = result?.availableAtEnd ?? 0
+          const actualSpend = result?.actualSpend ?? stop.pullsToSpend
           const remainingAfter = result?.remainingAfter ?? 0
+          const spendCapped = actualSpend < stop.pullsToSpend
 
           return (
             <div
@@ -184,9 +186,11 @@ export function Scenarios() {
                       <span className="text-slate-200 font-medium">{availableAtEnd}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">After spend</span>
-                      <span style={{ color: remainingAfter >= 0 ? '#34d399' : '#f87171', fontWeight: 500 }}>
-                        {remainingAfter >= 0 ? '+' : ''}{remainingAfter}
+                      <span className="text-slate-500">
+                        {spendCapped ? `Spend (capped at ${actualSpend})` : 'After spend'}
+                      </span>
+                      <span style={{ color: '#34d399', fontWeight: 500 }}>
+                        +{remainingAfter}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs mt-0.5">
@@ -234,7 +238,9 @@ export function Scenarios() {
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', color: '#e2e8f0', fontWeight: 600 }}>{r.availableAtStart}</td>
                     <td style={{ padding: '0.5rem 0.75rem', color: '#a78bfa', fontWeight: 600 }}>{r.availableAtEnd}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: '#94a3b8' }}>{r.stop.pullsToSpend}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: r.actualSpend < r.stop.pullsToSpend ? '#fbbf24' : '#94a3b8' }}>
+                      {r.actualSpend}{r.actualSpend < r.stop.pullsToSpend ? ` / ${r.stop.pullsToSpend}` : ''}
+                    </td>
                     <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#34d399' : '#f87171' }}>
                       {r.remainingAfter >= 0 ? '+' : ''}{r.remainingAfter}
                     </td>

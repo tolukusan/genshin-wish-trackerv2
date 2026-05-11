@@ -165,8 +165,9 @@ export interface ChainStopResult {
   daysToEnd: number
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
+  actualSpend: number       // min(pullsToSpend, availableAtEnd) — what you can actually spend
   canAfford: boolean        // availableAtEnd >= stop.pullsToSpend
-  remainingAfter: number    // availableAtEnd - pullsToSpend
+  remainingAfter: number    // availableAtEnd - actualSpend (always >= 0)
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
