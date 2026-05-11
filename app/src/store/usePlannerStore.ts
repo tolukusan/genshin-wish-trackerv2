@@ -146,7 +146,7 @@ function buildSeedPatches(
         patches.push(patch);
         start = end;
         minor++;
-        if (minor > 9) {
+        if (minor >= 8) {
             major++;
             minor = 0;
         }
@@ -250,7 +250,7 @@ export const usePlannerStore = create<PlannerStore>()(
                 let version = r.patchAnchorVersion;
                 if (last) {
                     const [maj, min] = last.version.split(".").map(Number);
-                    version = min >= 9 ? `${maj + 1}.0` : `${maj}.${min + 1}`;
+                    version = min >= 7 ? `${maj + 1}.0` : `${maj}.${min + 1}`;
                 }
 
                 const newPatch: Patch = {
