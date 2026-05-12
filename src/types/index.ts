@@ -153,6 +153,7 @@ export interface ChainStop {
   patchId: string
   phase: 1 | 2
   label: string
+  pullsToSpend: number
 }
 
 export interface ChainStopResult {
@@ -162,7 +163,7 @@ export interface ChainStopResult {
   phaseEndDate: string
   daysToStop: number
   daysToEnd: number
-  pullsToSpend: number      // hardPity - pityCarry (pity carries through skips, resets after spend)
+  pullsToSpend: number      // user-set; pity carry applied internally to determine canAfford threshold
   guaranteed: boolean       // guarantee status at this stop (carries and flips on each successful spend)
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)

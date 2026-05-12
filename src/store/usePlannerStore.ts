@@ -400,7 +400,7 @@ export const usePlannerStore = create<PlannerStore>()(
                 })),
 
             addChainStop: () => {
-                const { patches, chain } = get();
+                const { patches, chain, config } = get();
                 const today = new Date();
 
                 let nextPatchId = "";
@@ -436,11 +436,14 @@ export const usePlannerStore = create<PlannerStore>()(
                     }
                 }
 
+                const defaultPulls = config.hardPityCharacter;
+
                 const stop: ChainStop = {
                     id: nanoid(),
                     patchId: nextPatchId,
                     phase: nextPhase,
                     label: "",
+                    pullsToSpend: defaultPulls,
                 };
                 set((s) => ({ chain: [...s.chain, stop] }));
             },
@@ -501,7 +504,7 @@ export const usePlannerStore = create<PlannerStore>()(
         }),
         {
             name: "teyvat-pull-planner",
-            version: 6,
+            version: 7,
         },
     ),
 );

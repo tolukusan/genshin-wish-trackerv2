@@ -1,6 +1,7 @@
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { runChain } from '@/engine/projectionEngine'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { NumberInput } from '@/components/ui/NumberInput'
 import { format, parseISO } from 'date-fns'
 
 export function Scenarios() {
@@ -160,24 +161,19 @@ export function Scenarios() {
                   </select>
                 </div>
 
-                {/* Pulls to spend (computed) */}
+                {/* Pulls to spend (editable) */}
                 <div className="flex flex-col gap-1">
-                  <span className="label">Pulls Needed</span>
-                  <div style={{
-                    padding: '0.45rem 0.75rem',
-                    borderRadius: '0.5rem',
-                    border: '1px solid rgba(71,85,105,0.4)',
-                    background: 'rgba(15,23,42,0.5)',
-                    color: '#a78bfa',
-                    fontWeight: 700,
-                    fontSize: '1.05rem',
-                  }}>
-                    {result?.pullsToSpend ?? '—'}
-                  </div>
+                  <NumberInput
+                    label="Pulls to Spend"
+                    value={stop.pullsToSpend}
+                    min={1}
+                    max={180}
+                    onChange={(v) => updateChainStop(stop.id, { pullsToSpend: v })}
+                  />
                   <p className="text-xs text-slate-500">
-                    {idx === 0
-                      ? <>{player.characterBannerPity} pity in · {player.characterBannerGuaranteed ? 'Guaranteed' : '50/50'}</>
-                      : '90 pulls · pity resets after each 5★'}
+                    {result
+                      ? result.guaranteed ? '90 = guaranteed' : '90 = 50/50 · 180 = guarantee'
+                      : '90 · 180 for guarantee on 50/50'}
                   </p>
                 </div>
 
