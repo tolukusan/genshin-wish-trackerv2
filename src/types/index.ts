@@ -162,7 +162,8 @@ export interface ChainStopResult {
   phaseEndDate: string
   daysToStop: number
   daysToEnd: number
-  pullsToSpend: number      // computed from pity: stop 0 = hardPity*(1|2) - pity, subsequent = hardPity*2
+  pullsToSpend: number      // hardPity - pityCarry (pity carries through skips, resets after spend)
+  guaranteed: boolean       // guarantee status at this stop (carries and flips on each successful spend)
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
   actualSpend: number       // pullsToSpend if affordable, else 0 (roll-over)

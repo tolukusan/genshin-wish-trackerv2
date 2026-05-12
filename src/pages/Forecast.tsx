@@ -10,9 +10,7 @@ import { format, parseISO } from 'date-fns'
 export function Forecast() {
   const { player, config, patches, target, setTarget, updateConfig } = usePlannerStore()
 
-  const pityBasedPullsNeeded = player.characterBannerGuaranteed
-    ? config.hardPityCharacter - player.characterBannerPity
-    : config.hardPityCharacter * 2 - player.characterBannerPity
+  const pityBasedPullsNeeded = config.hardPityCharacter - player.characterBannerPity
 
   const forecast = target ? runProjection({ player, config, patches, target }) : null
   const timeline = target ? buildTimeline({ player, config, patches, target }) : []
@@ -84,7 +82,7 @@ export function Forecast() {
               {pityBasedPullsNeeded}
             </div>
             <p className="text-xs text-slate-500">
-              {player.characterBannerGuaranteed ? 'Guaranteed' : '50/50 worst case'} · {player.characterBannerPity} pity already in
+              {player.characterBannerPity} pity in · next 5★ is {player.characterBannerGuaranteed ? 'Guaranteed' : 'on 50/50'}
             </p>
           </div>
         </div>

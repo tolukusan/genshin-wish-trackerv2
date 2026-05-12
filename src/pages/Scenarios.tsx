@@ -176,8 +176,8 @@ export function Scenarios() {
                   </div>
                   <p className="text-xs text-slate-500">
                     {idx === 0
-                      ? <>Pity: <span className="text-slate-300">{player.characterBannerPity}</span> · {player.characterBannerGuaranteed ? 'guaranteed' : '50/50'}</>
-                      : '180 worst case (50/50, 0 pity)'}
+                      ? <>{player.characterBannerPity} pity in · {player.characterBannerGuaranteed ? 'Guaranteed' : '50/50'}</>
+                      : '90 pulls · pity resets after each 5★'}
                   </p>
                 </div>
 
@@ -223,7 +223,7 @@ export function Scenarios() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(51,65,85,0.6)' }}>
-                  {['#', 'Banner', 'Window', '@Start', '@End', 'Spend', 'Remaining', 'OK?'].map((h) => (
+                  {['#', 'Banner', 'Window', '@Start', '@End', 'Spend', 'Remaining', 'Status', 'OK?'].map((h) => (
                     <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>
                       {h}
                     </th>
@@ -251,6 +251,9 @@ export function Scenarios() {
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#34d399' : '#f87171' }}>
                       {r.remainingAfter >= 0 ? '+' : ''}{r.remainingAfter}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteed ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                      {r.guaranteed ? 'Guaranteed' : '50/50'}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', fontWeight: 700, color: r.canAfford ? '#34d399' : '#f87171' }}>
                       {r.canAfford ? '✓' : '✗'}

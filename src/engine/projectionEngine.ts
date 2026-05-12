@@ -225,9 +225,7 @@ export function runProjection(input: EngineInput): ForecastResult {
   const guaranteedAtTarget = player.characterBannerGuaranteed
   const pullsToPity = config.hardPityCharacter - pityAtTarget
 
-  const pullsForGuarantee = guaranteedAtTarget
-    ? config.hardPityCharacter - pityAtTarget
-    : config.hardPityCharacter * 2 - pityAtTarget
+  const pullsForGuarantee = config.hardPityCharacter - pityAtTarget
 
   return {
     atStart,
@@ -279,7 +277,10 @@ export function runChain(input: {
 
   const results: ChainStopResult[] = []
   let deficit = 0
-  let isFirst = true
+  // pityCarry: resets to 0 only after a successful spend (skips don't consume pity).
+  // guaranteedCarry: flips on each successful spend — guaranteed → 50/50, 50/50 → guaranteed (worst case).
+  let pityCarry = player.characterBannerPity
+  let guaranteedCarry = player.characterBannerGuaranteed
 
   for (const stop of chain) {
     const patch = patches.find((p) => p.id === stop.patchId)
@@ -295,12 +296,9 @@ export function runChain(input: {
     const snapStart = computeSnapshot(player, config, patches, phaseDate, today)
     const snapEnd = computeSnapshot(player, config, patches, phaseEnd, today)
 
-    // Stop 0 cost accounts for pity already invested. Subsequent stops reset to 0 pity, 50/50.
-    const pullsToSpend = isFirst
-      ? (player.characterBannerGuaranteed
-          ? config.hardPityCharacter - player.characterBannerPity
-          : config.hardPityCharacter * 2 - player.characterBannerPity)
-      : config.hardPityCharacter * 2
+    // Cost = pulls to reach next 5-star from current pity.
+    // Pity carries forward through skips and only resets after a successful spend.
+    const pullsToSpend = config.hardPityCharacter - pityCarry
 
     const availableAtStart = snapStart.totalPulls - deficit
     const availableAtEnd = snapEnd.totalPulls - deficit
@@ -308,8 +306,13 @@ export function runChain(input: {
     const actualSpend = canAfford ? pullsToSpend : 0
     const remainingAfter = availableAtEnd - actualSpend
 
+    const guaranteed = guaranteedCarry
     deficit += actualSpend
-    isFirst = false
+    if (canAfford) {
+      pityCarry = 0
+      // After getting a character: guaranteed → back to 50/50; 50/50 → guaranteed (worst case: lost 50/50)
+      guaranteedCarry = !guaranteedCarry
+    }
 
     results.push({
       stop,
@@ -319,6 +322,7 @@ export function runChain(input: {
       daysToStop,
       daysToEnd,
       pullsToSpend,
+      guaranteed,
       availableAtStart,
       availableAtEnd,
       actualSpend,
