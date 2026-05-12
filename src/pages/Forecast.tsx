@@ -1,7 +1,6 @@
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { runProjection, buildTimeline } from '@/engine/projectionEngine'
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import { NumberInput } from '@/components/ui/NumberInput'
 import { Toggle } from '@/components/ui/Toggle'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
@@ -44,7 +43,7 @@ export function Forecast() {
                   patchId,
                   phase: parseInt(phase) as 1 | 2,
                   label: ph.featuredCharacters[0] || `${patch.version} Phase ${phase}`,
-                  pullsNeeded: target?.pullsNeeded ?? pityBasedPullsNeeded,
+                  pullsNeeded: pityBasedPullsNeeded,
                 })
               }}
             >
@@ -72,27 +71,21 @@ export function Forecast() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <NumberInput
-              label="Pulls Needed"
-              value={target?.pullsNeeded ?? pityBasedPullsNeeded}
-              min={1}
-              max={360}
-              onChange={(v) => target && setTarget({ ...target, pullsNeeded: v })}
-            />
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500">
-                Based on pity: <span className="text-slate-300">{pityBasedPullsNeeded}</span>
-                {' '}({player.characterBannerGuaranteed ? 'guaranteed' : '50/50 worst case'}, {player.characterBannerPity} pity)
-              </p>
-              {target && target.pullsNeeded !== pityBasedPullsNeeded && (
-                <button
-                  className="text-xs text-accent-purple-light hover:underline"
-                  onClick={() => setTarget({ ...target, pullsNeeded: pityBasedPullsNeeded })}
-                >
-                  Reset ↺
-                </button>
-              )}
+            <label className="label">Pulls Needed</label>
+            <div style={{
+              padding: '0.45rem 0.75rem',
+              borderRadius: '0.5rem',
+              border: '1px solid rgba(71,85,105,0.4)',
+              background: 'rgba(15,23,42,0.5)',
+              color: '#a78bfa',
+              fontWeight: 700,
+              fontSize: '1.05rem',
+            }}>
+              {pityBasedPullsNeeded}
             </div>
+            <p className="text-xs text-slate-500">
+              {player.characterBannerGuaranteed ? 'Guaranteed' : '50/50 worst case'} · {player.characterBannerPity} pity already in
+            </p>
           </div>
         </div>
 
@@ -141,14 +134,22 @@ export function Forecast() {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Need</span>
-                  <span className="text-slate-300">{forecast.pullsNeeded}</span>
+                  <span className="text-slate-300">{pityBasedPullsNeeded}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Margin</span>
-                  <span style={{ color: (forecast.atStart.totalPulls - forecast.pullsNeeded) >= 0 ? '#34d399' : '#f87171' }}>
-                    {forecast.atStart.totalPulls - forecast.pullsNeeded >= 0 ? '+' : ''}{forecast.atStart.totalPulls - forecast.pullsNeeded}
+                  <span style={{ color: (forecast.atStart.totalPulls - pityBasedPullsNeeded) >= 0 ? '#34d399' : '#f87171' }}>
+                    {forecast.atStart.totalPulls - pityBasedPullsNeeded >= 0 ? '+' : ''}{forecast.atStart.totalPulls - pityBasedPullsNeeded}
                   </span>
                 </div>
+                {!forecast.canGuaranteeAtStart && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Ends at pity</span>
+                    <span style={{ color: '#f87171' }}>
+                      {Math.min(forecast.pityAtTarget + forecast.atStart.totalPulls, config.hardPityCharacter)} / {config.hardPityCharacter}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Guarantee</span>
                   <span style={{ color: forecast.canGuaranteeAtStart ? '#34d399' : '#f87171' }}>
@@ -176,14 +177,22 @@ export function Forecast() {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Need</span>
-                  <span className="text-slate-300">{forecast.pullsNeeded}</span>
+                  <span className="text-slate-300">{pityBasedPullsNeeded}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Margin</span>
-                  <span style={{ color: (forecast.atEnd.totalPulls - forecast.pullsNeeded) >= 0 ? '#34d399' : '#f87171' }}>
-                    {forecast.atEnd.totalPulls - forecast.pullsNeeded >= 0 ? '+' : ''}{forecast.atEnd.totalPulls - forecast.pullsNeeded}
+                  <span style={{ color: (forecast.atEnd.totalPulls - pityBasedPullsNeeded) >= 0 ? '#34d399' : '#f87171' }}>
+                    {forecast.atEnd.totalPulls - pityBasedPullsNeeded >= 0 ? '+' : ''}{forecast.atEnd.totalPulls - pityBasedPullsNeeded}
                   </span>
                 </div>
+                {!forecast.canGuaranteeAtEnd && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Ends at pity</span>
+                    <span style={{ color: '#f87171' }}>
+                      {Math.min(forecast.pityAtTarget + forecast.atEnd.totalPulls, config.hardPityCharacter)} / {config.hardPityCharacter}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Guarantee</span>
                   <span style={{ color: forecast.canGuaranteeAtEnd ? '#34d399' : '#f87171' }}>
@@ -193,36 +202,53 @@ export function Forecast() {
               </div>
             </div>
 
-            {/* Pity info */}
-            <div className="card p-5 flex flex-col gap-3">
-              <div>
-                <p className="label">Pulls to Next Pity</p>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {forecast.guaranteedAtTarget ? 'Guaranteed (no 50/50)' : 'On 50/50'}
-                </p>
-              </div>
-              <p style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>
-                {forecast.pullsToPity}
-              </p>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Current pity</span>
-                  <span className="text-slate-300">{forecast.pityAtTarget} / 90</span>
+            {/* Pulls remaining after spend */}
+            {(() => {
+              const canAffordAtStart = forecast.canGuaranteeAtStart
+              const canAffordAtEnd = forecast.canGuaranteeAtEnd
+              const remainAtStart = canAffordAtStart
+                ? forecast.atStart.totalPulls - pityBasedPullsNeeded
+                : forecast.atStart.totalPulls
+              const remainAtEnd = canAffordAtEnd
+                ? forecast.atEnd.totalPulls - pityBasedPullsNeeded
+                : forecast.atEnd.totalPulls
+              return (
+                <div
+                  className="card p-5 flex flex-col gap-3"
+                  style={{ borderColor: canAffordAtEnd ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.25)' }}
+                >
+                  <div>
+                    <p className="label">Pulls Remaining</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {canAffordAtEnd ? 'After spending on this character' : 'Carries over — can\'t afford yet'}
+                    </p>
+                  </div>
+                  <p style={{ fontSize: '2.25rem', fontWeight: 700, color: canAffordAtEnd ? '#34d399' : '#f87171', lineHeight: 1 }}>
+                    +{remainAtEnd}
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">At banner start</span>
+                      <span style={{ color: canAffordAtStart ? '#34d399' : '#f87171' }}>
+                        +{remainAtStart}{!canAffordAtStart && ' (carry)'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">At banner end</span>
+                      <span style={{ color: canAffordAtEnd ? '#34d399' : '#f87171' }}>
+                        +{remainAtEnd}{!canAffordAtEnd && ' (carry)'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">Pity · Status</span>
+                      <span className="text-slate-400">
+                        {forecast.pityAtTarget} · {forecast.guaranteedAtTarget ? 'Guaranteed' : '50/50'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Soft pity</span>
-                  <span style={{ color: forecast.pityAtTarget >= config.softPityCharacter ? '#fbbf24' : '#64748b' }}>
-                    {forecast.pityAtTarget >= config.softPityCharacter ? `Active (${forecast.pityAtTarget}+)` : `Starts at ${config.softPityCharacter}`}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Status</span>
-                  <span style={{ color: forecast.guaranteedAtTarget ? '#34d399' : '#94a3b8' }}>
-                    {forecast.guaranteedAtTarget ? 'Guaranteed' : '50/50'}
-                  </span>
-                </div>
-              </div>
-            </div>
+              )
+            })()}
           </div>
 
           {/* Chart */}

@@ -1,5 +1,6 @@
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { Sidebar } from './Sidebar'
+import { BottomNav } from './BottomNav'
 import { Dashboard } from '@/pages/Dashboard'
 import { Patches } from '@/pages/Patches'
 import { Forecast } from '@/pages/Forecast'
@@ -12,14 +13,25 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto p-6">
+      {/* Sidebar — desktop only */}
+      <div className="hidden sm:flex">
+        <Sidebar />
+      </div>
+
+      {/* Main content — add bottom padding on mobile to clear the bottom nav */}
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
         {nav === 'dashboard' && <Dashboard />}
         {nav === 'patches' && <Patches />}
         {nav === 'forecast' && <Forecast />}
         {nav === 'scenarios' && <Scenarios />}
         {nav === 'settings' && <Settings />}
       </main>
+
+      {/* Bottom nav — mobile only */}
+      <div className="sm:hidden">
+        <BottomNav />
+      </div>
+
       <DriveBanner />
     </div>
   )

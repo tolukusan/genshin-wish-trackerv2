@@ -1,82 +1,39 @@
 import { usePlannerStore } from "@/store/usePlannerStore";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { NumberInput } from "@/components/ui/NumberInput";
-import { useState, useEffect } from "react";
-import {
-    driveSignIn, driveSignOut, driveIsSignedIn,
-    driveSave, driveLoad,
-    getStoredClientId, setStoredClientId,
-    getLastSyncTime, setLastSyncTime,
-} from "@/utils/googleDrive";
+import { parseISO, isWithinInterval, format } from "date-fns";
 
 export function Settings() {
     const {
         config,
+        patches,
         updateConfig,
         updateRecurring,
         resetConfig,
         rebuildPatchDates,
     } = usePlannerStore();
 
-    const [clientId, setClientId] = useState(getStoredClientId)
-    const [driveConnected, setDriveConnected] = useState(driveIsSignedIn)
-    const [driveStatus, setDriveStatus] = useState<string | null>(null)
-    const [lastSync, setLastSync] = useState(getLastSyncTime)
-
-    useEffect(() => { setStoredClientId(clientId) }, [clientId])
-
-    async function handleConnect() {
-        if (!clientId.trim()) { setDriveStatus('Enter a Client ID first.'); return }
-        setDriveStatus('Connecting…')
-        try {
-            await driveSignIn(clientId)
-            setDriveConnected(true)
-            setDriveStatus('Connected.')
-        } catch {
-            setDriveStatus('Sign-in failed. Check your Client ID and authorized origins.')
-        }
-    }
-
-    function handleDisconnect() {
-        driveSignOut()
-        setDriveConnected(false)
-        setDriveStatus(null)
-    }
-
-    async function handleSaveToDrive() {
-        setDriveStatus('Saving…')
-        try {
-            const { player, config: cfg, patches, target, scenarios, chain } = usePlannerStore.getState()
-            await driveSave({ player, config: cfg, patches, target, scenarios, chain })
-            setLastSyncTime()
-            setLastSync(getLastSyncTime())
-            setDriveStatus('Saved to Drive ✓')
-        } catch (e: any) {
-            setDriveStatus(`Save failed: ${e.message}`)
-        }
-    }
-
-    async function handleLoadFromDrive() {
-        setDriveStatus('Loading…')
-        try {
-            const data = await driveLoad() as any
-            if (!data) { setDriveStatus('No Drive data found.'); return }
-            usePlannerStore.setState({
-                ...(data.player && { player: data.player }),
-                ...(data.config && { config: data.config }),
-                ...(data.patches && { patches: data.patches }),
-                ...(data.target !== undefined && { target: data.target }),
-                ...(data.scenarios && { scenarios: data.scenarios }),
-                ...(data.chain && { chain: data.chain }),
-            })
-            setLastSyncTime()
-            setLastSync(getLastSyncTime())
-            setDriveStatus('Loaded from Drive ✓')
-        } catch (e: any) {
-            setDriveStatus(`Load failed: ${e.message}`)
-        }
-    }
     const r = config.recurring;
+
+    const today = new Date();
+    const currentPatch = patches.find((p) =>
+        isWithinInterval(today, { start: parseISO(p.startDate), end: parseISO(p.endDate) })
+    );
+    const firstPatch = patches[0];
+    const beforeAnchor = !currentPatch && firstPatch && today < parseISO(firstPatch.startDate);
+
+    function prevVersion(v: string) {
+        const [maj, min] = v.split('.').map(Number);
+        return min === 0 ? `${maj - 1}.7` : `${maj}.${min - 1}`;
+    }
+
+    const patchScheduleSub = currentPatch
+        ? `Currently on v${currentPatch.version} · ends ${format(parseISO(currentPatch.endDate), 'MMM d, yyyy')}`
+        : beforeAnchor && firstPatch
+        ? `Currently on v${prevVersion(firstPatch.version)} · v${firstPatch.version} starts ${format(parseISO(firstPatch.startDate), 'MMM d, yyyy')}`
+        : firstPatch
+        ? `v${firstPatch.version} · ${r.patchLengthDays}d cycles`
+        : `${r.patchLengthDays}d cycles from ${r.patchAnchorDate}`;
 
     const handleExport = () => {
         const { player, config, patches, target, scenarios, chain } =
@@ -141,7 +98,7 @@ export function Settings() {
             <section className="card p-5">
                 <SectionHeader
                     title="Patch Schedule"
-                    sub="Anchor patch and cadence"
+                    sub={patchScheduleSub}
                     action={
                         <button
                             className="btn-secondary text-xs px-3 py-1.5"
@@ -388,68 +345,6 @@ export function Settings() {
             </section>
 
             {/* Google Drive */}
-            <section className="card p-5">
-                <SectionHeader
-                    title="Google Drive Sync"
-                    sub="Save your planner data to Google Drive so it's available on any device"
-                />
-                <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1">
-                        <label className="label">OAuth Client ID</label>
-                        <input
-                            className="input-base"
-                            placeholder="Paste your Google OAuth 2.0 Client ID"
-                            value={clientId}
-                            onChange={(e) => setClientId(e.target.value)}
-                            disabled={driveConnected}
-                        />
-                        <p className="text-xs text-slate-500">
-                            Create a project in{' '}
-                            <a
-                                href="https://console.cloud.google.com/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-accent-purple-light hover:underline"
-                            >
-                                Google Cloud Console
-                            </a>
-                            , enable the Drive API, create OAuth 2.0 credentials (Web app), and add your site URL as an authorized origin.
-                        </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 items-center">
-                        {!driveConnected ? (
-                            <button className="btn-primary" onClick={handleConnect}>
-                                Connect Google Drive
-                            </button>
-                        ) : (
-                            <>
-                                <button className="btn-primary" onClick={handleSaveToDrive}>
-                                    Save to Drive
-                                </button>
-                                <button className="btn-secondary" onClick={handleLoadFromDrive}>
-                                    Load from Drive
-                                </button>
-                                <button className="btn-danger" onClick={handleDisconnect}>
-                                    Disconnect
-                                </button>
-                            </>
-                        )}
-                        {driveStatus && (
-                            <span className="text-xs" style={{ color: driveStatus.includes('✓') ? '#34d399' : driveStatus.includes('failed') || driveStatus.includes('failed') ? '#f87171' : '#94a3b8' }}>
-                                {driveStatus}
-                            </span>
-                        )}
-                    </div>
-
-                    {lastSync && (
-                        <p className="text-xs text-slate-500">
-                            Last synced: {new Date(lastSync).toLocaleString()}
-                        </p>
-                    )}
-                </div>
-            </section>
-
             {/* Data */}
             <section className="card p-5">
                 <SectionHeader

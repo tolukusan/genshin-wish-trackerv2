@@ -1,7 +1,6 @@
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { runChain } from '@/engine/projectionEngine'
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import { NumberInput } from '@/components/ui/NumberInput'
 import { format, parseISO } from 'date-fns'
 
 export function Scenarios() {
@@ -161,19 +160,24 @@ export function Scenarios() {
                   </select>
                 </div>
 
-                {/* Pulls to spend */}
+                {/* Pulls to spend (computed) */}
                 <div className="flex flex-col gap-1">
-                  <NumberInput
-                    label="Pulls to Spend"
-                    value={stop.pullsToSpend}
-                    min={1}
-                    max={360}
-                    onChange={(v) => updateChainStop(stop.id, { pullsToSpend: v })}
-                  />
+                  <span className="label">Pulls Needed</span>
+                  <div style={{
+                    padding: '0.45rem 0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid rgba(71,85,105,0.4)',
+                    background: 'rgba(15,23,42,0.5)',
+                    color: '#a78bfa',
+                    fontWeight: 700,
+                    fontSize: '1.05rem',
+                  }}>
+                    {result?.pullsToSpend ?? '—'}
+                  </div>
                   <p className="text-xs text-slate-500">
                     {idx === 0
                       ? <>Pity: <span className="text-slate-300">{player.characterBannerPity}</span> · {player.characterBannerGuaranteed ? 'guaranteed' : '50/50'}</>
-                      : '90 = one 50/50 · 180 = guaranteed'}
+                      : '180 worst case (50/50, 0 pity)'}
                   </p>
                 </div>
 
@@ -181,12 +185,6 @@ export function Scenarios() {
                 <div className="flex flex-col gap-1">
                   <span className="label">Pulls Available</span>
                   <div className="flex flex-col gap-0.5 pt-1">
-                    {idx === 0 && player.characterBannerPity > 0 && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-500">Pity bonus</span>
-                        <span style={{ color: '#a78bfa' }}>+{player.characterBannerPity}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">At start</span>
                       <span className="text-slate-200 font-medium">{availableAtStart}</span>
@@ -249,7 +247,7 @@ export function Scenarios() {
                     <td style={{ padding: '0.5rem 0.75rem', color: '#e2e8f0', fontWeight: 600 }}>{r.availableAtStart}</td>
                     <td style={{ padding: '0.5rem 0.75rem', color: '#a78bfa', fontWeight: 600 }}>{r.availableAtEnd}</td>
                     <td style={{ padding: '0.5rem 0.75rem', color: r.canAfford ? '#94a3b8' : '#f87171' }}>
-                      {r.canAfford ? r.stop.pullsToSpend : `skip (${r.stop.pullsToSpend})`}
+                      {r.canAfford ? r.pullsToSpend : `skip (${r.pullsToSpend})`}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#34d399' : '#f87171' }}>
                       {r.remainingAfter >= 0 ? '+' : ''}{r.remainingAfter}

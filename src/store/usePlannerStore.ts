@@ -400,21 +400,47 @@ export const usePlannerStore = create<PlannerStore>()(
                 })),
 
             addChainStop: () => {
-                const { patches, chain, player, config } = get();
-                const firstPatch = patches[0];
-                const isFirst = chain.length === 0;
-                const pullsToSpend = isFirst
-                    ? player.characterBannerGuaranteed
-                        ? config.hardPityCharacter - player.characterBannerPity
-                        : config.hardPityCharacter * 2 -
-                          player.characterBannerPity
-                    : config.hardPityCharacter * 2;
+                const { patches, chain } = get();
+                const today = new Date();
+
+                let nextPatchId = "";
+                let nextPhase: 1 | 2 = 1;
+
+                if (chain.length === 0) {
+                    // Find first patch whose phase 1 hasn't started yet
+                    for (const patch of patches) {
+                        const ph1 = patch.phases.find((ph) => ph.phase === 1);
+                        if (ph1 && parseISO(ph1.startDate) > today) {
+                            nextPatchId = patch.id;
+                            nextPhase = 1;
+                            break;
+                        }
+                    }
+                    if (!nextPatchId) {
+                        nextPatchId = patches[0]?.id ?? "";
+                        nextPhase = 1;
+                    }
+                } else {
+                    const lastStop = chain[chain.length - 1];
+                    if (lastStop.phase === 1) {
+                        nextPatchId = lastStop.patchId;
+                        nextPhase = 2;
+                    } else {
+                        const patchIdx = patches.findIndex(
+                            (p) => p.id === lastStop.patchId,
+                        );
+                        const nextPatch = patches[patchIdx + 1];
+                        nextPatchId =
+                            nextPatch?.id ?? patches[0]?.id ?? "";
+                        nextPhase = 1;
+                    }
+                }
+
                 const stop: ChainStop = {
                     id: nanoid(),
-                    patchId: firstPatch?.id ?? "",
-                    phase: 1,
+                    patchId: nextPatchId,
+                    phase: nextPhase,
                     label: "",
-                    pullsToSpend,
                 };
                 set((s) => ({ chain: [...s.chain, stop] }));
             },

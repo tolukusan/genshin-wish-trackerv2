@@ -1,6 +1,7 @@
 import { usePlannerStore } from '@/store/usePlannerStore'
 import type { NavTab } from '@/types'
 import { clsx } from 'clsx'
+import { parseISO, isWithinInterval, format } from 'date-fns'
 
 const NAV: { tab: NavTab; label: string; icon: string }[] = [
   { tab: 'dashboard', label: 'Dashboard', icon: '⬡' },
@@ -10,8 +11,34 @@ const NAV: { tab: NavTab; label: string; icon: string }[] = [
   { tab: 'settings', label: 'Settings', icon: '⚙' },
 ]
 
+function prevVersion(v: string) {
+  const [maj, min] = v.split('.').map(Number)
+  return min === 0 ? `${maj - 1}.7` : `${maj}.${min - 1}`
+}
+
 export function Sidebar() {
-  const { nav, setNav } = usePlannerStore()
+  const { nav, setNav, patches, config } = usePlannerStore()
+
+  const today = new Date()
+  const currentPatch = patches.find((p) =>
+    isWithinInterval(today, { start: parseISO(p.startDate), end: parseISO(p.endDate) })
+  )
+  const firstPatch = patches[0]
+  const beforeAnchor = !currentPatch && firstPatch && today < parseISO(firstPatch.startDate)
+
+  const footerLine1 = currentPatch
+    ? `Currently v${currentPatch.version}`
+    : beforeAnchor && firstPatch
+    ? `Currently v${prevVersion(firstPatch.version)}`
+    : firstPatch
+    ? `v${firstPatch.version}`
+    : 'No patches'
+
+  const footerLine2 = currentPatch
+    ? `ends ${format(parseISO(currentPatch.endDate), 'MMM d')}`
+    : beforeAnchor && firstPatch
+    ? `v${firstPatch.version} starts ${format(parseISO(firstPatch.startDate), 'MMM d')}`
+    : `${config.recurring.patchLengthDays}d cycles`
 
   return (
     <aside className="w-56 shrink-0 bg-navy-800 border-r border-slate-700/50 flex flex-col">
@@ -47,8 +74,8 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-slate-700/50">
-        <p className="text-xs text-slate-600">Patch 6.6 anchor</p>
-        <p className="text-xs text-slate-500">May 20 · 42d cycles</p>
+        <p className="text-xs text-slate-400">{footerLine1}</p>
+        <p className="text-xs text-slate-500">{footerLine2}</p>
       </div>
     </aside>
   )

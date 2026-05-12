@@ -295,13 +295,17 @@ export function runChain(input: {
     const snapStart = computeSnapshot(player, config, patches, phaseDate, today)
     const snapEnd = computeSnapshot(player, config, patches, phaseEnd, today)
 
-    // Pity is already-spent progress toward the next 5-star — add it only on the first stop.
-    const pityBonus = isFirst ? player.characterBannerPity : 0
+    // Stop 0 cost accounts for pity already invested. Subsequent stops reset to 0 pity, 50/50.
+    const pullsToSpend = isFirst
+      ? (player.characterBannerGuaranteed
+          ? config.hardPityCharacter - player.characterBannerPity
+          : config.hardPityCharacter * 2 - player.characterBannerPity)
+      : config.hardPityCharacter * 2
 
-    const availableAtStart = snapStart.totalPulls - deficit + pityBonus
-    const availableAtEnd = snapEnd.totalPulls - deficit + pityBonus
-    const canAfford = availableAtEnd >= stop.pullsToSpend
-    const actualSpend = canAfford ? stop.pullsToSpend : 0
+    const availableAtStart = snapStart.totalPulls - deficit
+    const availableAtEnd = snapEnd.totalPulls - deficit
+    const canAfford = availableAtEnd >= pullsToSpend
+    const actualSpend = canAfford ? pullsToSpend : 0
     const remainingAfter = availableAtEnd - actualSpend
 
     deficit += actualSpend
@@ -314,6 +318,7 @@ export function runChain(input: {
       phaseEndDate: format(phaseEnd, 'yyyy-MM-dd'),
       daysToStop,
       daysToEnd,
+      pullsToSpend,
       availableAtStart,
       availableAtEnd,
       actualSpend,

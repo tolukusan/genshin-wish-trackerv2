@@ -76,9 +76,12 @@ function PatchCard({
   return (
     <div className="card overflow-hidden">
       {/* Header */}
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggleExpand}
-        className="w-full flex items-center justify-between p-4 hover:bg-slate-700/20 transition-colors text-left"
+        onKeyDown={(e) => e.key === 'Enter' && onToggleExpand()}
+        className="w-full flex items-center justify-between p-4 hover:bg-slate-700/20 transition-colors cursor-pointer select-none"
       >
         <div className="flex items-center gap-3">
           <span className="text-accent-purple font-semibold text-sm w-10">v{patch.version}</span>
@@ -102,7 +105,7 @@ function PatchCard({
           </button>
           <span className="text-slate-500 text-sm">{expanded ? '▲' : '▼'}</span>
         </div>
-      </button>
+      </div>
 
       {/* Expanded body */}
       {expanded && (

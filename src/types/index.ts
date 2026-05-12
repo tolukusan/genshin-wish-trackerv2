@@ -153,7 +153,6 @@ export interface ChainStop {
   patchId: string
   phase: 1 | 2
   label: string
-  pullsToSpend: number
 }
 
 export interface ChainStopResult {
@@ -163,10 +162,11 @@ export interface ChainStopResult {
   phaseEndDate: string
   daysToStop: number
   daysToEnd: number
+  pullsToSpend: number      // computed from pity: stop 0 = hardPity*(1|2) - pity, subsequent = hardPity*2
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
-  actualSpend: number       // min(pullsToSpend, availableAtEnd) — what you can actually spend
-  canAfford: boolean        // availableAtEnd >= stop.pullsToSpend
+  actualSpend: number       // pullsToSpend if affordable, else 0 (roll-over)
+  canAfford: boolean        // availableAtEnd >= pullsToSpend
   remainingAfter: number    // availableAtEnd - actualSpend (always >= 0)
 }
 
