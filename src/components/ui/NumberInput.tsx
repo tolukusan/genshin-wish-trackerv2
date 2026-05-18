@@ -39,7 +39,14 @@ export function NumberInput({ label, value, onChange, min = 0, max, step = 1, hi
         min={min}
         max={max}
         step={step}
-        onChange={(e) => setRaw(e.target.value)}
+        onChange={(e) => {
+          setRaw(e.target.value)
+          const parsed = parseFloat(e.target.value)
+          if (!isNaN(parsed) && e.target.value !== '') {
+            const clamped = Math.max(min, max !== undefined ? Math.min(max, parsed) : parsed)
+            onChange(clamped)
+          }
+        }}
         onBlur={(e) => commit(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value) }}
       />
