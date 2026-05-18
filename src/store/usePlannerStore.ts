@@ -5,6 +5,7 @@ import type {
     ProjectionConfig,
     RecurringConfig,
     Patch,
+    PatchType,
     BannerPhase,
     PatchEvent,
     Target,
@@ -27,9 +28,9 @@ const defaultRecurring: RecurringConfig = {
     battlePassPaidPrimos: 680,
     battlePassPaidFates: 4,
     trialPrimosPerPhase: 40,
-    defaultEventCount: 4,
-    defaultEventPrimos: 420,
-    defaultEventPhase2Count: 2,
+    defaultEventCount: 3,
+    defaultEventPrimos: 1017,
+    defaultEventPhase2Count: 0,
     bannerDurationDays: 20,
     patchLengthDays: 42,
     phase2OffsetDays: 21,
@@ -77,20 +78,25 @@ const defaultPlayer: PlayerState = {
     battlePassMode: "off",
 };
 
-function buildDefaultEvents(
-    count: number,
-    primosEach: number,
-    phase2Count: number,
-): PatchEvent[] {
-    const phase1Count = Math.max(0, count - phase2Count);
-    return Array.from({ length: count }, (_, i) => ({
+// Variable event income per patch type (~3050–12140 primos).
+// Engine already tracks maintenance (600), livestream (300), and trials (80) separately —
+// these values cover only the remaining variable portion so totals match the data spec.
+const PATCH_TYPE_EVENTS: Record<PatchType, [string, number][]> = {
+    'standard':     [['Version Events', 2272], ['New Content',  640], ['Apologems & Web Events',  140]],
+    'sub-area':     [['Version Events', 2272], ['New Content', 2400], ['Apologems & Web Events',  140]],
+    'lantern-rite': [['Version Events', 4400], ['New Content', 3680], ['Apologems & Web Events', 1740]],
+    'new-region':   [['Version Events', 4400], ['New Content', 5760], ['Apologems & Web Events', 1980]],
+}
+
+function buildPatchTypeEvents(type: PatchType): PatchEvent[] {
+    return PATCH_TYPE_EVENTS[type].map(([name, primogems]) => ({
         id: nanoid(),
-        name: `Event ${i + 1}`,
-        primogems: primosEach,
+        name,
+        primogems,
         fates: 0,
-        phase: i < phase1Count ? (1 as const) : (2 as const),
+        phase: 1 as const,
         enabled: true,
-    }));
+    }))
 }
 
 function buildSeedPatches(
@@ -98,9 +104,6 @@ function buildSeedPatches(
     anchorVersion: string,
     patchLength: number,
     phase2Offset: number,
-    eventCount: number,
-    eventPrimos: number,
-    eventPhase2Count: number,
 ): Patch[] {
     const patches: Patch[] = [];
     const [majorStr, minorStr] = anchorVersion.split(".");
@@ -117,11 +120,8 @@ function buildSeedPatches(
             version: `${major}.${minor}`,
             startDate: format(start, "yyyy-MM-dd"),
             endDate: format(end, "yyyy-MM-dd"),
-            events: buildDefaultEvents(
-                eventCount,
-                eventPrimos,
-                eventPhase2Count,
-            ),
+            patchType: 'standard',
+            events: buildPatchTypeEvents('standard'),
             phases: [
                 {
                     id: nanoid(),
@@ -189,6 +189,7 @@ interface PlannerStore {
     ) => void;
     deleteEvent: (patchId: string, eventId: string) => void;
     toggleEvent: (patchId: string, eventId: string) => void;
+    setPatchType: (patchId: string, type: PatchType) => void;
     setTarget: (t: Target | null) => void;
     addScenario: () => void;
     updateScenario: (id: string, data: Partial<Omit<Scenario, "id">>) => void;
@@ -211,9 +212,6 @@ export const usePlannerStore = create<PlannerStore>()(
                 defaultRecurring.patchAnchorVersion,
                 defaultRecurring.patchLengthDays,
                 defaultRecurring.phase2OffsetDays,
-                defaultRecurring.defaultEventCount,
-                defaultRecurring.defaultEventPrimos,
-                defaultRecurring.defaultEventPhase2Count,
             ),
             target: null,
             scenarios: [],
@@ -258,11 +256,8 @@ export const usePlannerStore = create<PlannerStore>()(
                     version,
                     startDate: format(newStart, "yyyy-MM-dd"),
                     endDate: format(end, "yyyy-MM-dd"),
-                    events: buildDefaultEvents(
-                        r.defaultEventCount,
-                        r.defaultEventPrimos,
-                        r.defaultEventPhase2Count,
-                    ),
+                    patchType: 'standard',
+                    events: buildPatchTypeEvents('standard'),
                     phases: [
                         {
                             id: nanoid(),
@@ -369,6 +364,15 @@ export const usePlannerStore = create<PlannerStore>()(
                                           : e,
                                   ),
                               }
+                            : p,
+                    ),
+                })),
+
+            setPatchType: (patchId, type) =>
+                set((s) => ({
+                    patches: s.patches.map((p) =>
+                        p.id === patchId
+                            ? { ...p, patchType: type, events: buildPatchTypeEvents(type) }
                             : p,
                     ),
                 })),
@@ -504,7 +508,7 @@ export const usePlannerStore = create<PlannerStore>()(
         }),
         {
             name: "teyvat-pull-planner",
-            version: 7,
+            version: 8,
         },
     ),
 );

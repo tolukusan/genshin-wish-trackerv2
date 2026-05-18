@@ -2,10 +2,10 @@ import { usePlannerStore } from '@/store/usePlannerStore'
 import { clsx } from 'clsx'
 import { format, parseISO } from 'date-fns'
 import { useState } from 'react'
-import type { Patch } from '@/types'
+import type { Patch, PatchType } from '@/types'
 
 export function Patches() {
-  const { patches, addPatch, updatePatch, deletePatch, updatePhase, addEvent, updateEvent, deleteEvent, toggleEvent } =
+  const { patches, addPatch, updatePatch, deletePatch, updatePhase, addEvent, updateEvent, deleteEvent, toggleEvent, setPatchType } =
     usePlannerStore()
   const [expandedId, setExpandedId] = useState<string | null>(patches[0]?.id ?? null)
 
@@ -33,6 +33,7 @@ export function Patches() {
             onUpdateEvent={(evId, data) => updateEvent(patch.id, evId, data)}
             onDeleteEvent={(evId) => deleteEvent(patch.id, evId)}
             onToggleEvent={(evId) => toggleEvent(patch.id, evId)}
+            onSetPatchType={(type) => setPatchType(patch.id, type)}
           />
         ))}
         {patches.length === 0 && (
@@ -43,6 +44,20 @@ export function Patches() {
       </div>
     </div>
   )
+}
+
+const PATCH_TYPE_LABELS: Record<PatchType, string> = {
+  'standard':     'Standard',
+  'sub-area':     'Sub-area',
+  'lantern-rite': 'Lantern Rite',
+  'new-region':   'New Region',
+}
+
+const PATCH_TYPE_WISHES: Record<PatchType, string> = {
+  'standard':     '~67 wishes',
+  'sub-area':     '~78 wishes',
+  'lantern-rite': '~109 wishes',
+  'new-region':   '~123 wishes',
 }
 
 interface PatchCardProps {
@@ -56,6 +71,7 @@ interface PatchCardProps {
   onUpdateEvent: (evId: string, data: any) => void
   onDeleteEvent: (evId: string) => void
   onToggleEvent: (evId: string) => void
+  onSetPatchType: (type: PatchType) => void
 }
 
 function PatchCard({
@@ -69,6 +85,7 @@ function PatchCard({
   onUpdateEvent,
   onDeleteEvent,
   onToggleEvent,
+  onSetPatchType,
 }: PatchCardProps) {
   const totalEvents = patch.events.filter((e) => e.enabled).length
   const totalEventPrimos = patch.events.filter((e) => e.enabled).reduce((s, e) => s + e.primogems, 0)
@@ -86,9 +103,18 @@ function PatchCard({
         <div className="flex items-center gap-3">
           <span className="text-accent-purple font-semibold text-sm w-10">v{patch.version}</span>
           <div className="flex flex-col">
-            <span className="text-slate-200 text-sm font-medium">
-              {format(parseISO(patch.startDate), 'MMM d')} – {format(parseISO(patch.endDate), 'MMM d, yyyy')}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-200 text-sm font-medium">
+                {format(parseISO(patch.startDate), 'MMM d')} – {format(parseISO(patch.endDate), 'MMM d, yyyy')}
+              </span>
+              <span style={{
+                fontSize: '0.65rem', fontWeight: 600, padding: '0.1rem 0.4rem',
+                borderRadius: 4, backgroundColor: 'rgba(124,58,237,0.15)',
+                color: '#a78bfa', border: '1px solid rgba(124,58,237,0.25)',
+              }}>
+                {PATCH_TYPE_LABELS[patch.patchType ?? 'standard']}
+              </span>
+            </div>
             <span className="text-xs text-slate-500">
               {patch.phases[0]?.featuredCharacters[0] || 'Phase 1 TBD'} ·{' '}
               {patch.phases[1]?.featuredCharacters[0] || 'Phase 2 TBD'}
@@ -127,6 +153,21 @@ function PatchCard({
               <label className="label">End Date</label>
               <input type="date" className="input-base" value={patch.endDate}
                 onChange={(e) => onUpdatePatch({ endDate: e.target.value })} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="label">Patch Type</label>
+              <select
+                className="input-base"
+                value={patch.patchType ?? 'standard'}
+                onChange={(e) => onSetPatchType(e.target.value as PatchType)}
+              >
+                {(Object.keys(PATCH_TYPE_LABELS) as PatchType[]).map((t) => (
+                  <option key={t} value={t}>
+                    {PATCH_TYPE_LABELS[t]} — {PATCH_TYPE_WISHES[t]}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-600">Replaces event defaults</p>
             </div>
           </div>
 

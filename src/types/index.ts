@@ -73,11 +73,14 @@ export interface BannerPhase {
   notes?: string
 }
 
+export type PatchType = 'standard' | 'sub-area' | 'lantern-rite' | 'new-region'
+
 export interface Patch {
   id: string
   version: string
   startDate: string
   endDate: string
+  patchType: PatchType
   phases: BannerPhase[]
   events: PatchEvent[]
   maintenancePrimos: number     // patch maintenance reward (editable per patch)
