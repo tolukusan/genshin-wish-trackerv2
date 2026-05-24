@@ -1,6 +1,6 @@
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { clsx } from 'clsx'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, differenceInDays, addDays } from 'date-fns'
 import { useState } from 'react'
 import type { Patch, PatchType } from '@/types'
 
@@ -87,8 +87,44 @@ function PatchCard({
   onToggleEvent,
   onSetPatchType,
 }: PatchCardProps) {
+  const { config } = usePlannerStore()
+  const r = config.recurring
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
   const totalEvents = patch.events.filter((e) => e.enabled).length
   const totalEventPrimos = patch.events.filter((e) => e.enabled).reduce((s, e) => s + e.primogems, 0)
+  const totalEventFates = patch.events.filter((e) => e.enabled).reduce((s, e) => s + (e.fates ?? 0), 0)
+
+  // Per-patch income breakdown — exact values from patch dates
+  const patchStart = parseISO(patch.startDate)
+  const patchEnd = parseISO(patch.endDate)
+  const patchDays = differenceInDays(patchEnd, patchStart)
+
+  function countDayOfMonth(from: Date, to: Date, day: number): number {
+    const days = differenceInDays(to, from)
+    let count = 0
+    for (let d = 1; d <= days; d++) {
+      if (addDays(from, d).getDate() === day) count++
+    }
+    return count
+  }
+
+  const maintenancePrimos = patch.maintenanceEnabled ? (patch.maintenancePrimos ?? 600) : 0
+  const livestreamPrimos = patch.livestreamEnabled ? (patch.livestreamPrimos ?? 300) : 0
+  const commissionPrimos = r.dailyCommissions * patchDays
+  const abyssResets = countDayOfMonth(patchStart, patchEnd, 16)
+  const abysspPrimos = abyssResets * r.spiralAbyssMax
+  const theatreResets = countDayOfMonth(patchStart, patchEnd, 1)
+  const theatrePrimos = theatreResets * r.imaginariumTheatreMax
+  const shopFates = theatreResets * r.monthlyShopIntertwined
+  const stygianPrimos = r.stygianOnslaughtMax  // always 1 per patch (start + 7)
+  const trialPrimos = r.trialPrimosPerPhase * 2
+
+  const totalConfiguredPrimos = maintenancePrimos + livestreamPrimos + totalEventPrimos
+  const totalFixedPrimos = commissionPrimos + abysspPrimos + theatrePrimos + stygianPrimos + trialPrimos
+  const grandTotalPrimos = totalConfiguredPrimos + totalFixedPrimos
+  const grandTotalFates = Math.floor(grandTotalPrimos / r.primoPerFate) + totalEventFates + shopFates
+  const estimatedWishes = grandTotalFates
 
   return (
     <div className="card overflow-hidden">
@@ -343,6 +379,100 @@ function PatchCard({
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Advanced breakdown */}
+          <div className="border-t border-slate-700/30 pt-3">
+            <button
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-400 transition-colors"
+            >
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: '1rem', height: '1rem', borderRadius: 3,
+                border: '1px solid rgba(71,85,105,0.5)', fontSize: '0.6rem',
+                transform: showAdvanced ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s',
+              }}>▶</span>
+              Advanced — Patch Income Estimate
+              <span style={{ color: '#6366f1', fontWeight: 600 }}>~{estimatedWishes} wishes</span>
+            </button>
+
+            {showAdvanced && (
+              <div className="mt-3 rounded-lg border border-slate-700/30 overflow-hidden" style={{ fontSize: '0.75rem' }}>
+                {/* Configured */}
+                <div style={{ padding: '0.5rem 0.75rem', background: 'rgba(15,23,42,0.6)' }}>
+                  <p style={{ color: '#64748b', fontWeight: 600, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Configured</p>
+                  <div className="flex flex-col gap-1">
+                    {maintenancePrimos > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Patch Maintenance</span>
+                        <span className="text-slate-300">{maintenancePrimos.toLocaleString()} ✦</span>
+                      </div>
+                    )}
+                    {livestreamPrimos > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Livestream Codes</span>
+                        <span className="text-slate-300">{livestreamPrimos.toLocaleString()} ✦</span>
+                      </div>
+                    )}
+                    {patch.events.filter((e) => e.enabled).map((ev) => (
+                      <div key={ev.id} className="flex justify-between">
+                        <span className="text-slate-400">{ev.name}</span>
+                        <div className="flex gap-3">
+                          {ev.primogems > 0 && <span className="text-slate-300">{ev.primogems.toLocaleString()} ✦</span>}
+                          {(ev.fates ?? 0) > 0 && <span style={{ color: '#f0d060' }}>{ev.fates} fates</span>}
+                        </div>
+                      </div>
+                    ))}
+                    {maintenancePrimos === 0 && livestreamPrimos === 0 && totalEvents === 0 && (
+                      <span className="text-slate-600">None enabled</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Fixed income — exact from patch dates */}
+                <div style={{ padding: '0.5rem 0.75rem', background: 'rgba(15,23,42,0.3)', borderTop: '1px solid rgba(51,65,85,0.4)' }}>
+                  <p style={{ color: '#64748b', fontWeight: 600, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Fixed Income</p>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Daily Commissions ({patchDays}d)</span>
+                      <span className="text-slate-300">{commissionPrimos.toLocaleString()} ✦</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Spiral Abyss ({abyssResets}×, resets on 16th)</span>
+                      <span className="text-slate-300">{abysspPrimos.toLocaleString()} ✦</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Imaginarium Theatre ({theatreResets}×, resets on 1st)</span>
+                      <span className="text-slate-300">{theatrePrimos.toLocaleString()} ✦</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Stygian Onslaught (1×, day 7)</span>
+                      <span className="text-slate-300">{stygianPrimos.toLocaleString()} ✦</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Character Trials (2 phases)</span>
+                      <span className="text-slate-300">{trialPrimos} ✦</span>
+                    </div>
+                    {shopFates > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Monthly Shop ({theatreResets}×, resets on 1st)</span>
+                        <span style={{ color: '#f0d060' }}>{shopFates} fates</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div style={{ padding: '0.5rem 0.75rem', background: 'rgba(99,102,241,0.08)', borderTop: '1px solid rgba(51,65,85,0.4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#e2e8f0', fontWeight: 600 }}>Estimated Total</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400">{grandTotalPrimos.toLocaleString()} ✦</span>
+                    <span style={{ color: '#a78bfa', fontWeight: 700 }}>~{estimatedWishes} wishes</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

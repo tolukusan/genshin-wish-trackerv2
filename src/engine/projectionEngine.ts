@@ -221,6 +221,15 @@ export function runProjection(input: EngineInput): ForecastResult {
   const atStart = computeSnapshot(player, config, patches, phaseStart, today)
   const atEnd = computeSnapshot(player, config, patches, phaseEnd, today)
 
+  // Delta: income earned during the banner window only (phaseStart → phaseEnd).
+  // Zero out current resources so only incremental income sources appear.
+  const zeroPlayer: PlayerState = {
+    ...player,
+    primogems: 0, genesisCrystals: 0, intertwinedFates: 0,
+    starglitter: 0, stardust: 0, acquaintFates: 0,
+  }
+  const deltaAtEnd = computeSnapshot(zeroPlayer, config, patches, phaseEnd, phaseStart)
+
   const pityAtTarget = player.characterBannerPity
   const guaranteedAtTarget = player.characterBannerGuaranteed
   const pullsToPity = config.hardPityCharacter - pityAtTarget
@@ -230,6 +239,7 @@ export function runProjection(input: EngineInput): ForecastResult {
   return {
     atStart,
     atEnd,
+    deltaAtEnd,
     pityAtTarget,
     guaranteedAtTarget,
     pullsToPity,
@@ -248,9 +258,11 @@ function emptyResult(pullsNeeded: number, player: PlayerState, config: Projectio
     totalPulls: currentPulls,
     breakdown: [],
   }
+  const emptyDelta: ForecastSnapshot = { cutoffDate: '', daysToTarget: 0, totalPrimos: 0, totalPulls: 0, breakdown: [] }
   return {
     atStart: empty,
     atEnd: empty,
+    deltaAtEnd: emptyDelta,
     pityAtTarget: player.characterBannerPity,
     guaranteedAtTarget: player.characterBannerGuaranteed,
     pullsToPity: config.hardPityCharacter - player.characterBannerPity,

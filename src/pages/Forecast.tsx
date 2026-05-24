@@ -305,11 +305,17 @@ export function Forecast() {
                 </div>
               </div>
 
-              {/* End breakdown */}
+              {/* End breakdown — incremental only */}
               <div>
                 <p className="label mb-2">At Banner End (+{config.recurring.bannerDurationDays}d)</p>
                 <div className="flex flex-col divide-y divide-slate-700/40">
-                  {forecast.atEnd.breakdown.map((item, i) => (
+                  {/* Summary of what was already counted at banner start */}
+                  <div className="flex items-center justify-between py-2 text-xs">
+                    <span className="text-slate-400">At banner start</span>
+                    <span className="text-slate-300 font-semibold">{forecast.atStart.totalPulls} pulls</span>
+                  </div>
+                  {/* Only the new income earned during the banner window */}
+                  {forecast.deltaAtEnd.breakdown.map((item, i) => (
                     <div key={i} className="flex items-center justify-between py-2 text-xs">
                       <span className="text-slate-400">{item.source}</span>
                       <div className="flex gap-3 text-right">
@@ -318,6 +324,9 @@ export function Forecast() {
                       </div>
                     </div>
                   ))}
+                  {forecast.deltaAtEnd.breakdown.length === 0 && (
+                    <div className="py-2 text-xs text-slate-600">No additional income during banner window</div>
+                  )}
                   <div className="flex items-center justify-between py-2 text-sm font-semibold">
                     <span className="text-slate-100">Total Pulls</span>
                     <span style={{ color: '#a78bfa' }}>{forecast.atEnd.totalPulls}</span>

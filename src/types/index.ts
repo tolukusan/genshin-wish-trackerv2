@@ -123,6 +123,8 @@ export interface ForecastResult {
   atStart: ForecastSnapshot
   // Banner end (phase start + bannerDurationDays)
   atEnd: ForecastSnapshot
+  // Incremental income earned during the banner window (start → end), current resources excluded
+  deltaAtEnd: ForecastSnapshot
   // Shared pity info
   pityAtTarget: number
   guaranteedAtTarget: boolean
