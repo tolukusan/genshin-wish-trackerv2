@@ -103,7 +103,7 @@ function PatchCard({
   function countDayOfMonth(from: Date, to: Date, day: number): number {
     const days = differenceInDays(to, from)
     let count = 0
-    for (let d = 1; d <= days; d++) {
+    for (let d = 0; d < days; d++) {
       if (addDays(from, d).getDate() === day) count++
     }
     return count
