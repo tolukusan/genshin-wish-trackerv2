@@ -118,7 +118,7 @@ function PatchCard({
     onToggleEvent,
     onSetPatchType,
 }: PatchCardProps) {
-    const { config } = usePlannerStore();
+    const { config, player } = usePlannerStore();
     const r = config.recurring;
     const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -144,6 +144,14 @@ function PatchCard({
         return count;
     }
 
+    // Welkin overlap: how many of this patch's days fall within the player's welkin window
+    const today = new Date()
+    const welkinExpiry = addDays(today, player.welkinDaysRemaining)
+    const overlapStart = patchStart > today ? patchStart : today
+    const overlapEnd = patchEnd < welkinExpiry ? patchEnd : welkinExpiry
+    const welkinDays = player.welkinActive ? Math.max(0, differenceInDays(overlapEnd, overlapStart)) : 0
+    const welkinPrimos = welkinDays * r.welkinDaily
+
     const maintenancePrimos = patch.maintenanceEnabled
         ? (patch.maintenancePrimos ?? 600)
         : 0;
@@ -163,6 +171,7 @@ function PatchCard({
         maintenancePrimos + livestreamPrimos + totalEventPrimos;
     const totalFixedPrimos =
         commissionPrimos +
+        welkinPrimos +
         abysspPrimos +
         theatrePrimos +
         stygianPrimos +
@@ -815,6 +824,17 @@ function PatchCard({
                                                 ✦
                                             </span>
                                         </div>
+                                        {welkinDays > 0 && (
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-400">
+                                                    Welkin Moon ({welkinDays}d)
+                                                </span>
+                                                <span className="text-slate-300">
+                                                    {welkinPrimos.toLocaleString()}{" "}
+                                                    ✦
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between">
                                             <span className="text-slate-400">
                                                 Spiral Abyss ({abyssResets}×,

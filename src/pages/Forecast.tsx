@@ -92,7 +92,6 @@ export function Forecast() {
           <p className="label mb-3">Include in projection</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <Toggle label="Daily Commissions" checked={config.commissionsIncluded} onChange={(v) => updateConfig({ commissionsIncluded: v })} />
-            <Toggle label="Welkin Moon" checked={config.welkinIncluded} onChange={(v) => updateConfig({ welkinIncluded: v })} hint="Uses days remaining from Dashboard" />
             <Toggle label="Spiral Abyss" checked={config.spiralAbyssEnabled} onChange={(v) => updateConfig({ spiralAbyssEnabled: v })} hint="Resets on the 16th" />
             <Toggle label="Imaginarium Theatre" checked={config.imaginariumTheatreEnabled} onChange={(v) => updateConfig({ imaginariumTheatreEnabled: v })} hint="Resets on the 1st" />
             <Toggle label="Stygian Onslaught" checked={config.stygianOnslaughtEnabled} onChange={(v) => updateConfig({ stygianOnslaughtEnabled: v })} hint="7 days after each patch start" />

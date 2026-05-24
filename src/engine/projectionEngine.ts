@@ -70,7 +70,7 @@ function computeSnapshot(
   }
 
   // Welkin Moon (capped by days remaining)
-  if (config.welkinIncluded && player.welkinActive) {
+  if (player.welkinActive) {
     const welkinDays = Math.min(daysToTarget, player.welkinDaysRemaining)
     const primos = welkinDays * r.welkinDaily
     gainedPrimos += primos
