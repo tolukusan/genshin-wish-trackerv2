@@ -131,12 +131,14 @@ function computeSnapshot(
     }
   }
 
-  // Patch Maintenance — available at patch start (Phase 1), count patches where startDate <= cutoff
+  // Patch Maintenance — available at patch start (Phase 1), count patches where startDate is in (today, cutoff]
+  // Only future maintenance (not yet received) is counted; past maintenance is already in the player's balance.
   let maintenanceTotal = 0
   let maintenanceCount = 0
   for (const p of patches) {
     if (!p.maintenanceEnabled) continue
-    if (parseISO(p.startDate) <= cutoff) {
+    const pStart = parseISO(p.startDate)
+    if (pStart > today && pStart <= cutoff) {
       maintenanceTotal += p.maintenancePrimos ?? 600
       maintenanceCount++
     }
@@ -155,7 +157,7 @@ function computeSnapshot(
     const p = patches[i]
     if (!p.livestreamEnabled) continue
     const livestreamDate = addDays(parseISO(patches[i + 1].startDate), -12)
-    if (livestreamDate < cutoff) {
+    if (livestreamDate > today && livestreamDate < cutoff) {
       livestreamTotal += p.livestreamPrimos ?? 300
       livestreamCount++
     }
@@ -173,7 +175,7 @@ function computeSnapshot(
       if (!ev.enabled) continue
       const ph2Start = p.phases.find((ph) => ph.phase === 2)?.startDate
       const evDate = ev.phase === 2 && ph2Start ? parseISO(ph2Start) : parseISO(p.startDate)
-      if (evDate >= cutoff) continue
+      if (evDate >= cutoff || evDate <= today) continue
       eventPrimos += ev.primogems
       eventFates += ev.fates ?? 0
     }
