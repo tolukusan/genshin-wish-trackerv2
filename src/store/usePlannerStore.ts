@@ -27,7 +27,7 @@ const defaultRecurring: RecurringConfig = {
     monthlyShopIntertwined: 5,
     battlePassPaidPrimos: 680,
     battlePassPaidFates: 4,
-    trialPrimosPerPhase: 40,
+    trialPrimosPerPhase: 20,
     defaultEventCount: 3,
     defaultEventPrimos: 1017,
     defaultEventPhase2Count: 0,

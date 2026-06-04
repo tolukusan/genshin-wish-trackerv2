@@ -26,12 +26,12 @@ function countMonthlyOccurrences(from: Date, to: Date, dayOfMonth: number): numb
 }
 
 // Count phases from all patches whose startDate falls on or before the cutoff.
-function countTrialPhases(patches: Patch[], cutoff: Date): number {
+function countTrialPhases(patches: Patch[], cutoff: Date, today: Date): number {
   let count = 0
   for (const p of patches) {
     for (const ph of p.phases) {
       const phStart = parseISO(ph.startDate)
-      if (phStart <= cutoff) count++
+      if (phStart > today && phStart <= cutoff) count++
     }
   }
   return count
@@ -111,9 +111,9 @@ function computeSnapshot(
     push({ source: `Stygian Onslaught (${hits.length}×)`, primogems: primos, fates: 0 })
   }
 
-  // Character Trials — 40 primos per phase whose start date <= cutoff
+  // Character Trials — 20 primos per phase whose start date is in (today, cutoff]
   if (config.characterTrialsEnabled) {
-    const phases = countTrialPhases(patches, cutoff)
+    const phases = countTrialPhases(patches, cutoff, today)
     const primos = phases * r.trialPrimosPerPhase
     gainedPrimos += primos
     push({ source: `Character Trials (${phases} phases)`, primogems: primos, fates: 0 })
