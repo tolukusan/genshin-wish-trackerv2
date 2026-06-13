@@ -1,6 +1,7 @@
 import { usePlannerStore } from "@/store/usePlannerStore";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { Toggle } from "@/components/ui/Toggle";
 import { parseISO, isWithinInterval, format } from "date-fns";
 
 export function Settings() {
@@ -311,6 +312,16 @@ export function Settings() {
             <section className="card p-5">
                 <SectionHeader title="Pity Thresholds" />
                 <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2 mb-2">
+                        <Toggle
+                            label="Strict Guarantee"
+                            hint="Calculate 'Can Guarantee' using 180 pulls for 50/50 players."
+                            checked={config.strictGuarantee}
+                            onChange={(v: boolean) =>
+                                updateConfig({ strictGuarantee: v })
+                            }
+                        />
+                    </div>
                     <NumberInput
                         label="Character Soft Pity"
                         value={config.softPityCharacter}
@@ -344,7 +355,6 @@ export function Settings() {
                 </div>
             </section>
 
-            {/* Google Drive */}
             {/* Data */}
             <section className="card p-5">
                 <SectionHeader

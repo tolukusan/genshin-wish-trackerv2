@@ -1,4 +1,4 @@
-# Teyvat Pull Planner
+# Genshin Wish Projection
 
 A Genshin Impact wish projection tool. Enter your current resources and pity, configure upcoming patches, and see exactly how many pulls you'll have by any future banner.
 

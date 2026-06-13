@@ -56,6 +56,7 @@ const defaultConfig: ProjectionConfig = {
     hardPityChronicle: 90,
     softPityWeapon: 63,
     hardPityWeapon: 80,
+    strictGuarantee: true,
 };
 
 const defaultPlayer: PlayerState = {
@@ -507,7 +508,7 @@ export const usePlannerStore = create<PlannerStore>()(
             },
         }),
         {
-            name: "teyvat-pull-planner",
+            name: "genshin-wish-projection",
             version: 8,
         },
     ),

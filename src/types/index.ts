@@ -60,6 +60,7 @@ export interface ProjectionConfig {
   hardPityChronicle: number
   softPityWeapon: number
   hardPityWeapon: number
+  strictGuarantee: boolean
 }
 
 // ── Patches & Banners ─────────────────────────────────────────────────────────
