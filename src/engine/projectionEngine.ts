@@ -13,12 +13,14 @@ interface EngineInput {
   today?: Date
 }
 
-// Count how many times a specific day-of-month falls strictly between from and to (inclusive of 'to' but not 'from').
+// Count how many times a specific day-of-month falls in [from, to] (inclusive of both ends).
+// 'from' (today) is included because its reset is treated as still-pending/unclaimed,
+// consistent with how Daily Commissions counts today as a not-yet-done day.
 function countMonthlyOccurrences(from: Date, to: Date, dayOfMonth: number): number {
   const days = differenceInDays(to, from)
   if (days <= 0) return 0
   let count = 0
-  for (let d = 1; d <= days; d++) {
+  for (let d = 0; d <= days; d++) {
     const date = addDays(from, d)
     if (date.getDate() === dayOfMonth && date <= to) count++
   }
