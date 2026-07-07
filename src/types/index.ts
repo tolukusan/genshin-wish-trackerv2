@@ -99,6 +99,7 @@ export interface Target {
   phase: 1 | 2
   label: string
   pullsNeeded: number
+  copies: number // how many copies/constellations of this character are wanted (1 = C0)
 }
 
 // ── Forecast ──────────────────────────────────────────────────────────────────

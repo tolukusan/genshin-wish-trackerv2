@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { runProjection, buildTimeline } from '@/engine/projectionEngine'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { NumberInput } from '@/components/ui/NumberInput'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
@@ -41,6 +42,7 @@ export function NextCharacter() {
   const { player, config, patches, target, setTarget } = usePlannerStore()
 
   const pityBasedPullsNeeded = config.hardPityCharacter - player.characterBannerPity
+  const copies = target?.copies ?? 1
 
   // Default to the next upcoming banner phase the first time this view is opened.
   useEffect(() => {
@@ -52,6 +54,7 @@ export function NextCharacter() {
       phase: next.phase.phase,
       label: next.phase.featuredCharacters[0] || `${next.patch.version} Phase ${next.phase.phase}`,
       pullsNeeded: pityBasedPullsNeeded,
+      copies: 1,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -74,6 +77,18 @@ export function NextCharacter() {
   const forecast = target ? runProjection({ player, config: engineConfig, patches, target }) : null
   const timeline = target ? buildTimeline({ player, config: engineConfig, patches, target }) : []
 
+  // Scale the single-copy thresholds for wanting multiple copies (constellations).
+  // The first copy uses the real pity-aware cost; every additional copy assumes a
+  // fresh cycle (pity resets to 0 after each 5-star, regardless of the outcome).
+  const extraCopies = copies - 1
+  const scaled = forecast ? {
+    pullsToPity: forecast.pullsToPity + extraCopies * config.hardPityCharacter,
+    pullsForGuarantee: forecast.pullsForGuarantee + extraCopies * 2 * config.hardPityCharacter,
+    pullsToSoftPity: forecast.pullsToSoftPity + extraCopies * config.softPityCharacter,
+    pullsForGuaranteeSoftPity: forecast.pullsForGuaranteeSoftPity + extraCopies * 2 * config.softPityCharacter,
+  } : null
+  const copyWord = copies > 1 ? `${copies} copies` : 'a character'
+
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in">
       <div>
@@ -84,7 +99,7 @@ export function NextCharacter() {
       {/* Target selector */}
       <section className="card p-5">
         <SectionHeader title="Target Banner" sub="Defaults to the next upcoming banner — change it to check a further-out one" />
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-3 gap-4">
           <div className="flex flex-col gap-1">
             <label className="label">Patch & Phase</label>
             <select
@@ -101,6 +116,7 @@ export function NextCharacter() {
                   phase: parseInt(phase) as 1 | 2,
                   label: ph.featuredCharacters[0] || `${patch.version} Phase ${phase}`,
                   pullsNeeded: pityBasedPullsNeeded,
+                  copies,
                 })
               }}
             >
@@ -116,6 +132,15 @@ export function NextCharacter() {
             </select>
           </div>
 
+          <NumberInput
+            label="Copies Wanted"
+            value={copies}
+            min={1}
+            max={7}
+            onChange={(v) => target && setTarget({ ...target, copies: v })}
+            hint="1 = C0, 7 = C6"
+          />
+
           <div className="flex flex-col gap-1">
             <label className="label">Pulls Needed</label>
             <div style={{
@@ -127,7 +152,7 @@ export function NextCharacter() {
               fontWeight: 700,
               fontSize: '1.05rem',
             }}>
-              {pityBasedPullsNeeded}
+              {pityBasedPullsNeeded + (copies - 1) * config.hardPityCharacter}
             </div>
             <p className="text-xs text-slate-500">
               {player.characterBannerPity} pity in · next 5★ is {player.characterBannerGuaranteed ? 'Guaranteed' : 'on 50/50'}
@@ -164,21 +189,21 @@ export function NextCharacter() {
               </p>
               <div className="flex flex-col gap-1">
                 <NeedLine
-                  label="For a character"
-                  need={Math.max(0, forecast.pullsToPity - forecast.atStart.totalPulls)}
+                  label={`For ${copyWord}`}
+                  need={Math.max(0, scaled!.pullsToPity - forecast.atStart.totalPulls)}
                   blocker
                 />
                 <NeedLine
-                  label="To guarantee the character"
-                  need={Math.max(0, forecast.pullsForGuarantee - forecast.atStart.totalPulls)}
+                  label={`To guarantee ${copyWord}`}
+                  need={Math.max(0, scaled!.pullsForGuarantee - forecast.atStart.totalPulls)}
                 />
                 <NeedLine
                   label="To reach soft pity"
-                  need={Math.max(0, forecast.pullsToSoftPity - forecast.atStart.totalPulls)}
+                  need={Math.max(0, scaled!.pullsToSoftPity - forecast.atStart.totalPulls)}
                 />
                 <NeedLine
                   label="To guarantee (soft pity)"
-                  need={Math.max(0, forecast.pullsForGuaranteeSoftPity - forecast.atStart.totalPulls)}
+                  need={Math.max(0, scaled!.pullsForGuaranteeSoftPity - forecast.atStart.totalPulls)}
                 />
               </div>
             </div>
@@ -200,21 +225,21 @@ export function NextCharacter() {
               </p>
               <div className="flex flex-col gap-1">
                 <NeedLine
-                  label="For a character"
-                  need={Math.max(0, forecast.pullsToPity - forecast.atEnd.totalPulls)}
+                  label={`For ${copyWord}`}
+                  need={Math.max(0, scaled!.pullsToPity - forecast.atEnd.totalPulls)}
                   blocker
                 />
                 <NeedLine
-                  label="To guarantee the character"
-                  need={Math.max(0, forecast.pullsForGuarantee - forecast.atEnd.totalPulls)}
+                  label={`To guarantee ${copyWord}`}
+                  need={Math.max(0, scaled!.pullsForGuarantee - forecast.atEnd.totalPulls)}
                 />
                 <NeedLine
                   label="To reach soft pity"
-                  need={Math.max(0, forecast.pullsToSoftPity - forecast.atEnd.totalPulls)}
+                  need={Math.max(0, scaled!.pullsToSoftPity - forecast.atEnd.totalPulls)}
                 />
                 <NeedLine
                   label="To guarantee (soft pity)"
-                  need={Math.max(0, forecast.pullsForGuaranteeSoftPity - forecast.atEnd.totalPulls)}
+                  need={Math.max(0, scaled!.pullsForGuaranteeSoftPity - forecast.atEnd.totalPulls)}
                 />
               </div>
             </div>
@@ -241,9 +266,9 @@ export function NextCharacter() {
                       labelStyle={{ color: '#94a3b8' }}
                       itemStyle={{ color: '#a78bfa' }}
                     />
-                    {target && (
-                      <ReferenceLine y={target.pullsNeeded} stroke="#d4af37" strokeDasharray="4 2"
-                        label={{ value: `Need ${target.pullsNeeded}`, fill: '#d4af37', fontSize: 11 }} />
+                    {scaled && (
+                      <ReferenceLine y={scaled.pullsToPity} stroke="#d4af37" strokeDasharray="4 2"
+                        label={{ value: `Need ${scaled.pullsToPity}`, fill: '#d4af37', fontSize: 11 }} />
                     )}
                     <Area type="monotone" dataKey="cumulativePulls" stroke="#7c3aed" strokeWidth={2} fill="url(#pullGrad)" name="Pulls" />
                   </AreaChart>
