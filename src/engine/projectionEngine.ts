@@ -529,7 +529,7 @@ export function runChain(input: {
   return results
 }
 
-// ── Timeline (uses banner start cutoff) ──────────────────────────────────────
+// ── Timeline (today through banner end) ───────────────────────────────────────
 
 export interface TimelinePoint {
   label: string
@@ -547,26 +547,32 @@ export function buildTimeline(input: EngineInput): TimelinePoint[] {
   const targetPhase = targetPatch.phases.find((p) => p.phase === target.phase)
   if (!targetPhase) return []
 
-  const targetDate = parseISO(targetPhase.startDate)
-  const totalDays = differenceInDays(targetDate, today)
+  const phaseStart = parseISO(targetPhase.startDate)
+  const phaseEnd = addDays(phaseStart, r.bannerDurationDays)
+  const totalDays = differenceInDays(phaseEnd, today)
   if (totalDays <= 0) return []
 
-  const step = Math.max(7, Math.floor(totalDays / 20))
+  const step = Math.max(1, Math.floor(totalDays / 20))
   const points: TimelinePoint[] = []
-  let cumPrimos = player.primogems + player.genesisCrystals
 
   for (let d = 0; d <= totalDays; d += step) {
-    const dailyRate =
-      (config.commissionsIncluded ? r.dailyCommissions : 0) +
-      (config.welkinIncluded && player.welkinActive && d < player.welkinDaysRemaining ? r.welkinDaily : 0)
-
-    cumPrimos += dailyRate * Math.min(step, totalDays - d)
-    const cumFates = player.intertwinedFates + Math.floor(cumPrimos / r.primoPerFate)
-
+    const cutoff = addDays(today, d)
+    const snap = computeSnapshot(player, config, patches, cutoff, today)
     points.push({
-      label: format(addDays(today, d), 'MMM d'),
-      cumulativePrimos: Math.round(cumPrimos),
-      cumulativePulls: Math.round(cumFates),
+      label: format(cutoff, 'MMM d'),
+      cumulativePrimos: snap.totalPrimos,
+      cumulativePulls: snap.totalPulls,
+    })
+  }
+
+  // Make sure the very last point lands exactly on banner end, not wherever the step happened to fall.
+  const lastCutoff = addDays(today, points.length ? (points.length - 1) * step : 0)
+  if (differenceInDays(phaseEnd, lastCutoff) > 0) {
+    const snap = computeSnapshot(player, config, patches, phaseEnd, today)
+    points.push({
+      label: format(phaseEnd, 'MMM d'),
+      cumulativePrimos: snap.totalPrimos,
+      cumulativePulls: snap.totalPulls,
     })
   }
 

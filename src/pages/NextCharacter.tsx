@@ -248,7 +248,7 @@ export function NextCharacter() {
           {/* Chart */}
           {timeline.length > 0 && (
             <section className="card p-5">
-              <SectionHeader title="Pull Growth Timeline" sub="Cumulative pulls from today to banner start" />
+              <SectionHeader title="Pull Growth Timeline" sub="Cumulative pulls from today through banner end" />
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={timeline} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
