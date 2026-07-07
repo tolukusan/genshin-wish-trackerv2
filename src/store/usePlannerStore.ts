@@ -7,7 +7,6 @@ import type {
     Patch,
     PatchType,
     BannerPhase,
-    PatchEvent,
     Target,
     Scenario,
     ChainStop,
@@ -28,9 +27,6 @@ const defaultRecurring: RecurringConfig = {
     battlePassPaidPrimos: 680,
     battlePassPaidFates: 4,
     trialPrimosPerPhase: 20,
-    defaultEventCount: 3,
-    defaultEventPrimos: 1017,
-    defaultEventPhase2Count: 0,
     bannerDurationDays: 20,
     patchLengthDays: 42,
     phase2OffsetDays: 21,
@@ -38,6 +34,20 @@ const defaultRecurring: RecurringConfig = {
     patchAnchorDate: "2026-05-20",
     primoPerFate: 160,
     starglitterPerFate: 5,
+    maintenancePrimos: 600,
+    livestreamPrimos: 300,
+    patchTypeRewards: {
+        standard: 3052,
+        "sub-area": 4812,
+        "lantern-rite": 9820,
+        "new-region": 12140,
+    },
+    patchTypeTotalWishes: {
+        standard: 67,
+        "sub-area": 78,
+        "lantern-rite": 87,
+        "new-region": 128,
+    },
 };
 
 const defaultConfig: ProjectionConfig = {
@@ -50,6 +60,8 @@ const defaultConfig: ProjectionConfig = {
     characterTrialsEnabled: true,
     battlePassIncluded: false,
     monthlyShopIncluded: true,
+    maintenanceIncluded: true,
+    livestreamIncluded: true,
     softPityCharacter: 74,
     hardPityCharacter: 90,
     softPityChronicle: 74,
@@ -79,27 +91,6 @@ const defaultPlayer: PlayerState = {
     battlePassMode: "off",
 };
 
-// Variable event income per patch type (~3050–12140 primos).
-// Engine already tracks maintenance (600), livestream (300), and trials (80) separately —
-// these values cover only the remaining variable portion so totals match the data spec.
-const PATCH_TYPE_EVENTS: Record<PatchType, [string, number][]> = {
-    'standard':     [['Version Events', 2272], ['New Content',  640], ['Apologems & Web Events',  140]],
-    'sub-area':     [['Version Events', 2272], ['New Content', 2400], ['Apologems & Web Events',  140]],
-    'lantern-rite': [['Version Events', 4400], ['New Content', 3680], ['Apologems & Web Events', 1740]],
-    'new-region':   [['Version Events', 4400], ['New Content', 5760], ['Apologems & Web Events', 1980]],
-}
-
-function buildPatchTypeEvents(type: PatchType): PatchEvent[] {
-    return PATCH_TYPE_EVENTS[type].map(([name, primogems]) => ({
-        id: nanoid(),
-        name,
-        primogems,
-        fates: 0,
-        phase: 1 as const,
-        enabled: true,
-    }))
-}
-
 function buildSeedPatches(
     anchor: string,
     anchorVersion: string,
@@ -122,7 +113,6 @@ function buildSeedPatches(
             startDate: format(start, "yyyy-MM-dd"),
             endDate: format(end, "yyyy-MM-dd"),
             patchType: 'standard',
-            events: buildPatchTypeEvents('standard'),
             phases: [
                 {
                     id: nanoid(),
@@ -139,10 +129,6 @@ function buildSeedPatches(
                     featuredCharacters: [""],
                 },
             ],
-            maintenancePrimos: 600,
-            livestreamPrimos: 300,
-            maintenanceEnabled: true,
-            livestreamEnabled: true,
         };
         patches.push(patch);
         start = end;
@@ -174,7 +160,7 @@ interface PlannerStore {
     addPatch: () => void;
     updatePatch: (
         id: string,
-        data: Partial<Omit<Patch, "id" | "phases" | "events">>,
+        data: Partial<Omit<Patch, "id" | "phases">>,
     ) => void;
     deletePatch: (id: string) => void;
     updatePhase: (
@@ -182,14 +168,6 @@ interface PlannerStore {
         phaseId: string,
         data: Partial<Omit<BannerPhase, "id">>,
     ) => void;
-    addEvent: (patchId: string) => void;
-    updateEvent: (
-        patchId: string,
-        eventId: string,
-        data: Partial<Omit<PatchEvent, "id">>,
-    ) => void;
-    deleteEvent: (patchId: string, eventId: string) => void;
-    toggleEvent: (patchId: string, eventId: string) => void;
     setPatchType: (patchId: string, type: PatchType) => void;
     setTarget: (t: Target | null) => void;
     addScenario: () => void;
@@ -205,7 +183,7 @@ interface PlannerStore {
 export const usePlannerStore = create<PlannerStore>()(
     persist(
         (set, get) => ({
-            nav: "dashboard",
+            nav: "next-character",
             player: defaultPlayer,
             config: defaultConfig,
             patches: buildSeedPatches(
@@ -258,7 +236,6 @@ export const usePlannerStore = create<PlannerStore>()(
                     startDate: format(newStart, "yyyy-MM-dd"),
                     endDate: format(end, "yyyy-MM-dd"),
                     patchType: 'standard',
-                    events: buildPatchTypeEvents('standard'),
                     phases: [
                         {
                             id: nanoid(),
@@ -275,10 +252,6 @@ export const usePlannerStore = create<PlannerStore>()(
                             featuredCharacters: [""],
                         },
                     ],
-                    maintenancePrimos: 600,
-                    livestreamPrimos: 300,
-                    maintenanceEnabled: true,
-                    livestreamEnabled: true,
                 };
                 set({ patches: [...patches, newPatch] });
             },
@@ -309,72 +282,10 @@ export const usePlannerStore = create<PlannerStore>()(
                     ),
                 })),
 
-            addEvent: (patchId) => {
-                const ev: PatchEvent = {
-                    id: nanoid(),
-                    name: "New Event",
-                    primogems: 0,
-                    enabled: true,
-                };
-                set((s) => ({
-                    patches: s.patches.map((p) =>
-                        p.id === patchId
-                            ? { ...p, events: [...p.events, ev] }
-                            : p,
-                    ),
-                }));
-            },
-
-            updateEvent: (patchId, eventId, data) =>
-                set((s) => ({
-                    patches: s.patches.map((p) =>
-                        p.id === patchId
-                            ? {
-                                  ...p,
-                                  events: p.events.map((e) =>
-                                      e.id === eventId ? { ...e, ...data } : e,
-                                  ),
-                              }
-                            : p,
-                    ),
-                })),
-
-            deleteEvent: (patchId, eventId) =>
-                set((s) => ({
-                    patches: s.patches.map((p) =>
-                        p.id === patchId
-                            ? {
-                                  ...p,
-                                  events: p.events.filter(
-                                      (e) => e.id !== eventId,
-                                  ),
-                              }
-                            : p,
-                    ),
-                })),
-
-            toggleEvent: (patchId, eventId) =>
-                set((s) => ({
-                    patches: s.patches.map((p) =>
-                        p.id === patchId
-                            ? {
-                                  ...p,
-                                  events: p.events.map((e) =>
-                                      e.id === eventId
-                                          ? { ...e, enabled: !e.enabled }
-                                          : e,
-                                  ),
-                              }
-                            : p,
-                    ),
-                })),
-
             setPatchType: (patchId, type) =>
                 set((s) => ({
                     patches: s.patches.map((p) =>
-                        p.id === patchId
-                            ? { ...p, patchType: type, events: buildPatchTypeEvents(type) }
-                            : p,
+                        p.id === patchId ? { ...p, patchType: type } : p,
                     ),
                 })),
 
@@ -405,7 +316,7 @@ export const usePlannerStore = create<PlannerStore>()(
                 })),
 
             addChainStop: () => {
-                const { patches, chain, config } = get();
+                const { patches, chain, config, player } = get();
                 const today = new Date();
 
                 let nextPatchId = "";
@@ -441,7 +352,12 @@ export const usePlannerStore = create<PlannerStore>()(
                     }
                 }
 
-                const defaultPulls = config.hardPityCharacter;
+                // The first stop starts from the player's actual current pity;
+                // later stops assume a fresh cycle since we don't know how prior
+                // stops' 5-star luck will land until the chain is simulated.
+                const defaultPulls = chain.length === 0
+                    ? Math.max(1, config.hardPityCharacter - player.characterBannerPity)
+                    : config.hardPityCharacter;
 
                 const stop: ChainStop = {
                     id: nanoid(),
@@ -509,7 +425,28 @@ export const usePlannerStore = create<PlannerStore>()(
         }),
         {
             name: "genshin-wish-projection",
-            version: 8,
+            version: 11,
+            migrate: (persisted: any) => {
+                if (!persisted) return persisted;
+                const oldNav = persisted.nav;
+                return {
+                    ...persisted,
+                    nav:
+                        oldNav === "dashboard" || oldNav === "forecast"
+                            ? "next-character"
+                            : oldNav === "scenarios"
+                            ? "roadmap"
+                            : oldNav,
+                    config: {
+                        ...defaultConfig,
+                        ...persisted.config,
+                        recurring: {
+                            ...defaultRecurring,
+                            ...persisted.config?.recurring,
+                        },
+                    },
+                };
+            },
         },
     ),
 );

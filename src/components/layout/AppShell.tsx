@@ -1,10 +1,10 @@
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
-import { Dashboard } from '@/pages/Dashboard'
+import { NextCharacter } from '@/pages/NextCharacter'
+import { DataEntry } from '@/pages/DataEntry'
 import { Patches } from '@/pages/Patches'
-import { Forecast } from '@/pages/Forecast'
-import { Scenarios } from '@/pages/Scenarios'
+import { Roadmap } from '@/pages/Roadmap'
 import { Settings } from '@/pages/Settings'
 import { DriveBanner } from '@/components/ui/DriveBanner'
 
@@ -20,10 +20,10 @@ export function AppShell() {
 
       {/* Main content — add bottom padding on mobile to clear the bottom nav */}
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 sm:pb-6">
-        {nav === 'dashboard' && <Dashboard />}
+        {nav === 'next-character' && <NextCharacter />}
+        {nav === 'data-entry' && <DataEntry />}
         {nav === 'patches' && <Patches />}
-        {nav === 'forecast' && <Forecast />}
-        {nav === 'scenarios' && <Scenarios />}
+        {nav === 'roadmap' && <Roadmap />}
         {nav === 'settings' && <Settings />}
       </main>
 

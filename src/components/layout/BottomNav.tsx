@@ -3,10 +3,10 @@ import type { NavTab } from '@/types'
 import { clsx } from 'clsx'
 
 const NAV: { tab: NavTab; label: string; icon: string }[] = [
-  { tab: 'dashboard', label: 'Home', icon: '⬡' },
+  { tab: 'next-character', label: 'Next', icon: '◎' },
+  { tab: 'data-entry', label: 'Data', icon: '⬡' },
   { tab: 'patches', label: 'Patches', icon: '◈' },
-  { tab: 'forecast', label: 'Forecast', icon: '◎' },
-  { tab: 'scenarios', label: 'Chain', icon: '⇢' },
+  { tab: 'roadmap', label: 'Roadmap', icon: '⇢' },
   { tab: 'settings', label: 'Settings', icon: '⚙' },
 ]
 

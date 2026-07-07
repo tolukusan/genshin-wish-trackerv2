@@ -3,6 +3,14 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Toggle } from "@/components/ui/Toggle";
 import { parseISO, isWithinInterval, format } from "date-fns";
+import type { PatchType } from "@/types";
+
+const PATCH_TYPE_LABELS: Record<PatchType, string> = {
+    standard: "Standard",
+    "sub-area": "Sub-area",
+    "lantern-rite": "Lantern Rite",
+    "new-region": "New Region",
+};
 
 export function Settings() {
     const {
@@ -12,6 +20,7 @@ export function Settings() {
         updateRecurring,
         resetConfig,
         rebuildPatchDates,
+        updatePhase,
     } = usePlannerStore();
 
     const r = config.recurring;
@@ -172,7 +181,7 @@ export function Settings() {
             <section className="card p-5">
                 <SectionHeader
                     title="Recurring Rewards"
-                    sub="Default primo values — all user-editable"
+                    sub="Welkin Moon and Battle Pass are shared with Roadmap; the rest (Commissions, Abyss, Theatre, Stygian, Trials, Monthly Shop) are Next Character only — Roadmap folds those into the Total Wishes per Patch Type estimate below"
                 />
                 <div className="grid sm:grid-cols-2 gap-4">
                     <NumberInput
@@ -225,41 +234,133 @@ export function Settings() {
                 </div>
             </section>
 
-            {/* Default patch events */}
+            {/* Patch type reward estimates */}
             <section className="card p-5">
                 <SectionHeader
-                    title="Default Patch Events"
-                    sub="Pre-added to every new patch. Edit or delete per patch in the Patches tab."
+                    title="Patch Type Rewards"
+                    sub="Used by Next Character only — lump-sum EVENT income per patch, split 50/50 across its two phases. Only applied to patches that haven't started yet."
                 />
-                <div className="grid sm:grid-cols-3 gap-4">
-                    <NumberInput
-                        label="Events per patch"
-                        value={r.defaultEventCount}
-                        min={0}
-                        max={10}
-                        onChange={(v) =>
-                            updateRecurring({ defaultEventCount: v })
-                        }
-                    />
-                    <NumberInput
-                        label="Primos per event"
-                        value={r.defaultEventPrimos}
-                        min={0}
-                        onChange={(v) =>
-                            updateRecurring({ defaultEventPrimos: v })
-                        }
-                        hint="420 = standard event reward"
-                    />
-                    <NumberInput
-                        label="Phase 2 events"
-                        value={r.defaultEventPhase2Count}
-                        min={0}
-                        max={r.defaultEventCount}
-                        onChange={(v) =>
-                            updateRecurring({ defaultEventPhase2Count: v })
-                        }
-                        hint="Rest are Phase 1"
-                    />
+                <div className="grid sm:grid-cols-2 gap-4">
+                    {(Object.keys(PATCH_TYPE_LABELS) as PatchType[]).map((t) => (
+                        <NumberInput
+                            key={t}
+                            label={`${PATCH_TYPE_LABELS[t]} (primos/patch)`}
+                            value={r.patchTypeRewards[t]}
+                            min={0}
+                            onChange={(v) =>
+                                updateRecurring({
+                                    patchTypeRewards: {
+                                        ...r.patchTypeRewards,
+                                        [t]: v,
+                                    },
+                                })
+                            }
+                        />
+                    ))}
+                </div>
+            </section>
+
+            {/* Patch type total wish estimates */}
+            <section className="card p-5">
+                <SectionHeader
+                    title="Total Wishes per Patch Type"
+                    sub="Used by Roadmap only — an all-inclusive estimate (dailies + Abyss + Theatre + Stygian + Trials + Monthly Shop + events combined), split 50/50 across the patch's two phases."
+                />
+                <div className="grid sm:grid-cols-2 gap-4">
+                    {(Object.keys(PATCH_TYPE_LABELS) as PatchType[]).map((t) => (
+                        <NumberInput
+                            key={t}
+                            label={`${PATCH_TYPE_LABELS[t]} (wishes/patch)`}
+                            value={r.patchTypeTotalWishes[t]}
+                            min={0}
+                            onChange={(v) =>
+                                updateRecurring({
+                                    patchTypeTotalWishes: {
+                                        ...r.patchTypeTotalWishes,
+                                        [t]: v,
+                                    },
+                                })
+                            }
+                        />
+                    ))}
+                </div>
+            </section>
+
+            {/* Patch Maintenance & Livestream */}
+            <section className="card p-5">
+                <SectionHeader
+                    title="Patch Maintenance & Livestream"
+                    sub="Used by Next Character only — applied automatically to every patch"
+                />
+                <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                        <Toggle
+                            label="Patch Maintenance"
+                            checked={config.maintenanceIncluded}
+                            onChange={(v: boolean) =>
+                                updateConfig({ maintenanceIncluded: v })
+                            }
+                        />
+                        <NumberInput
+                            label="Primos per patch"
+                            value={r.maintenancePrimos}
+                            min={0}
+                            onChange={(v) =>
+                                updateRecurring({ maintenancePrimos: v })
+                            }
+                        />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <Toggle
+                            label="Livestream Codes"
+                            checked={config.livestreamIncluded}
+                            onChange={(v: boolean) =>
+                                updateConfig({ livestreamIncluded: v })
+                            }
+                        />
+                        <NumberInput
+                            label="Primos per patch"
+                            value={r.livestreamPrimos}
+                            min={0}
+                            onChange={(v) =>
+                                updateRecurring({ livestreamPrimos: v })
+                            }
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {/* Featured characters */}
+            <section className="card p-5">
+                <SectionHeader
+                    title="Featured Characters"
+                    sub="Labels shown for each banner phase"
+                />
+                <div className="flex flex-col gap-3">
+                    {patches.map((patch) => (
+                        <div key={patch.id} className="grid sm:grid-cols-3 gap-3 items-end">
+                            <span className="text-xs text-slate-500 sm:pb-2">
+                                v{patch.version}
+                            </span>
+                            {patch.phases.map((phase) => (
+                                <div key={phase.id} className="flex flex-col gap-1">
+                                    <label className="label">Phase {phase.phase}</label>
+                                    <input
+                                        className="input-base text-xs"
+                                        placeholder="e.g. Mavuika"
+                                        value={phase.featuredCharacters.join(", ")}
+                                        onChange={(e) =>
+                                            updatePhase(patch.id, phase.id, {
+                                                featuredCharacters: e.target.value
+                                                    .split(",")
+                                                    .map((s) => s.trim()),
+                                            })
+                                        }
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    ))}
                 </div>
             </section>
 

@@ -1,30 +1,89 @@
+import { useEffect } from 'react'
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { runProjection, buildTimeline } from '@/engine/projectionEngine'
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import { Toggle } from '@/components/ui/Toggle'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
+import type { Patch } from '@/types'
 
-export function Forecast() {
-  const { player, config, patches, target, setTarget, updateConfig } = usePlannerStore()
+// One "need X more" line. Green when already met; red for a hard blocker (can't get
+// any 5-star yet), amber for a softer/not-guaranteed-yet goal.
+function NeedLine({ label, need, blocker = false }: { label: string; need: number; blocker?: boolean }) {
+  const met = need <= 0
+  const color = met ? '#34d399' : blocker ? '#f87171' : '#f0b429'
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-slate-500">{label}</span>
+      <span style={{ color, fontWeight: met ? 500 : 600 }}>
+        {met ? 'Have enough ✓' : `Need ${need} more`}
+      </span>
+    </div>
+  )
+}
+
+// Earliest phase, across all patches, that hasn't started yet.
+function findNextPhase(patches: Patch[], today: Date) {
+  let best: { patch: Patch; phase: Patch['phases'][number] } | null = null
+  for (const patch of patches) {
+    for (const phase of patch.phases) {
+      if (parseISO(phase.startDate) <= today) continue
+      if (!best || parseISO(phase.startDate) < parseISO(best.phase.startDate)) {
+        best = { patch, phase }
+      }
+    }
+  }
+  return best
+}
+
+export function NextCharacter() {
+  const { player, config, patches, target, setTarget } = usePlannerStore()
 
   const pityBasedPullsNeeded = config.hardPityCharacter - player.characterBannerPity
 
-  const forecast = target ? runProjection({ player, config, patches, target }) : null
-  const timeline = target ? buildTimeline({ player, config, patches, target }) : []
+  // Default to the next upcoming banner phase the first time this view is opened.
+  useEffect(() => {
+    if (target) return
+    const next = findNextPhase(patches, new Date())
+    if (!next) return
+    setTarget({
+      patchId: next.patch.id,
+      phase: next.phase.phase,
+      label: next.phase.featuredCharacters[0] || `${next.patch.version} Phase ${next.phase.phase}`,
+      pullsNeeded: pityBasedPullsNeeded,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // No user-facing toggles here: the automatic F2P sources (Commissions, Abyss,
+  // Theatre, Stygian, Trials, Monthly Shop) always count, and Welkin/Battle Pass
+  // already follow whatever the player actually set on Data Entry.
+  const engineConfig = {
+    ...config,
+    commissionsIncluded: true,
+    spiralAbyssEnabled: true,
+    imaginariumTheatreEnabled: true,
+    stygianOnslaughtEnabled: true,
+    characterTrialsEnabled: true,
+    monthlyShopIncluded: true,
+    welkinIncluded: false,
+    battlePassIncluded: true,
+  }
+
+  const forecast = target ? runProjection({ player, config: engineConfig, patches, target }) : null
+  const timeline = target ? buildTimeline({ player, config: engineConfig, patches, target }) : []
 
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in">
       <div>
-        <h1 className="text-xl font-semibold text-slate-100">Forecast</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Select a target banner and see your projected pull count.</p>
+        <h1 className="text-xl font-semibold text-slate-100">Next Character</h1>
+        <p className="text-sm text-slate-500 mt-0.5">Your pull projection toward the next banner you're saving for.</p>
       </div>
 
       {/* Target selector */}
       <section className="card p-5">
-        <SectionHeader title="Target Banner" sub="Which banner are you saving for?" />
+        <SectionHeader title="Target Banner" sub="Defaults to the next upcoming banner — change it to check a further-out one" />
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
             <label className="label">Patch & Phase</label>
@@ -58,17 +117,6 @@ export function Forecast() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="label">Target Label (optional)</label>
-            <input
-              className="input-base"
-              placeholder="e.g. Mavuika rerun"
-              value={target?.label ?? ''}
-              onChange={(e) => target && setTarget({ ...target, label: e.target.value })}
-              disabled={!target}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
             <label className="label">Pulls Needed</label>
             <div style={{
               padding: '0.45rem 0.75rem',
@@ -86,33 +134,19 @@ export function Forecast() {
             </p>
           </div>
         </div>
-
-        {/* Income toggles */}
-        <div className="mt-4 pt-4 border-t border-slate-700/40">
-          <p className="label mb-3">Include in projection</p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <Toggle label="Daily Commissions" checked={config.commissionsIncluded} onChange={(v) => updateConfig({ commissionsIncluded: v })} />
-            <Toggle label="Spiral Abyss" checked={config.spiralAbyssEnabled} onChange={(v) => updateConfig({ spiralAbyssEnabled: v })} hint="Resets on the 16th" />
-            <Toggle label="Imaginarium Theatre" checked={config.imaginariumTheatreEnabled} onChange={(v) => updateConfig({ imaginariumTheatreEnabled: v })} hint="Resets on the 1st" />
-            <Toggle label="Stygian Onslaught" checked={config.stygianOnslaughtEnabled} onChange={(v) => updateConfig({ stygianOnslaughtEnabled: v })} hint="7 days after each patch start" />
-            <Toggle label="Character Trials" checked={config.characterTrialsEnabled} onChange={(v) => updateConfig({ characterTrialsEnabled: v })} hint="40 primos per phase (2 × 20)" />
-            <Toggle label="Monthly Shop" checked={config.monthlyShopIncluded} onChange={(v) => updateConfig({ monthlyShopIncluded: v })} hint="Resets on the 1st" />
-            <Toggle label="Battle Pass" checked={config.battlePassIncluded} onChange={(v) => updateConfig({ battlePassIncluded: v })} hint="Mode set on Dashboard (free = 0 primos)" />
-          </div>
-        </div>
       </section>
 
       {/* Empty state */}
       {!target && (
         <div className="card p-10 text-center">
-          <p className="text-slate-500">Select a target banner above to see your forecast.</p>
+          <p className="text-slate-500">No upcoming banners in the patch schedule — add one in Patches.</p>
         </div>
       )}
 
       {forecast && (
         <>
-          {/* Three primary numbers */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Two primary numbers */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* At banner start */}
             <div
               className="card p-5 flex flex-col gap-3"
@@ -129,30 +163,23 @@ export function Forecast() {
                 {forecast.atStart.totalPulls}
               </p>
               <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Need</span>
-                  <span className="text-slate-300">{pityBasedPullsNeeded}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Margin</span>
-                  <span style={{ color: (forecast.atStart.totalPulls - pityBasedPullsNeeded) >= 0 ? '#34d399' : '#f87171' }}>
-                    {forecast.atStart.totalPulls - pityBasedPullsNeeded >= 0 ? '+' : ''}{forecast.atStart.totalPulls - pityBasedPullsNeeded}
-                  </span>
-                </div>
-                {!forecast.canGuaranteeAtStart && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Ends at pity</span>
-                    <span style={{ color: '#f87171' }}>
-                      {Math.min(forecast.pityAtTarget + forecast.atStart.totalPulls, config.hardPityCharacter)} / {config.hardPityCharacter}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Guarantee</span>
-                  <span style={{ color: forecast.canGuaranteeAtStart ? '#34d399' : '#f87171' }}>
-                    {forecast.canGuaranteeAtStart ? 'Yes ✓' : 'No ✗'}
-                  </span>
-                </div>
+                <NeedLine
+                  label="For a character"
+                  need={Math.max(0, forecast.pullsToPity - forecast.atStart.totalPulls)}
+                  blocker
+                />
+                <NeedLine
+                  label="To guarantee the character"
+                  need={Math.max(0, forecast.pullsForGuarantee - forecast.atStart.totalPulls)}
+                />
+                <NeedLine
+                  label="To reach soft pity"
+                  need={Math.max(0, forecast.pullsToSoftPity - forecast.atStart.totalPulls)}
+                />
+                <NeedLine
+                  label="To guarantee (soft pity)"
+                  need={Math.max(0, forecast.pullsForGuaranteeSoftPity - forecast.atStart.totalPulls)}
+                />
               </div>
             </div>
 
@@ -172,80 +199,25 @@ export function Forecast() {
                 {forecast.atEnd.totalPulls}
               </p>
               <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Need</span>
-                  <span className="text-slate-300">{pityBasedPullsNeeded}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Margin</span>
-                  <span style={{ color: (forecast.atEnd.totalPulls - pityBasedPullsNeeded) >= 0 ? '#34d399' : '#f87171' }}>
-                    {forecast.atEnd.totalPulls - pityBasedPullsNeeded >= 0 ? '+' : ''}{forecast.atEnd.totalPulls - pityBasedPullsNeeded}
-                  </span>
-                </div>
-                {!forecast.canGuaranteeAtEnd && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Ends at pity</span>
-                    <span style={{ color: '#f87171' }}>
-                      {Math.min(forecast.pityAtTarget + forecast.atEnd.totalPulls, config.hardPityCharacter)} / {config.hardPityCharacter}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Guarantee</span>
-                  <span style={{ color: forecast.canGuaranteeAtEnd ? '#34d399' : '#f87171' }}>
-                    {forecast.canGuaranteeAtEnd ? 'Yes ✓' : 'No ✗'}
-                  </span>
-                </div>
+                <NeedLine
+                  label="For a character"
+                  need={Math.max(0, forecast.pullsToPity - forecast.atEnd.totalPulls)}
+                  blocker
+                />
+                <NeedLine
+                  label="To guarantee the character"
+                  need={Math.max(0, forecast.pullsForGuarantee - forecast.atEnd.totalPulls)}
+                />
+                <NeedLine
+                  label="To reach soft pity"
+                  need={Math.max(0, forecast.pullsToSoftPity - forecast.atEnd.totalPulls)}
+                />
+                <NeedLine
+                  label="To guarantee (soft pity)"
+                  need={Math.max(0, forecast.pullsForGuaranteeSoftPity - forecast.atEnd.totalPulls)}
+                />
               </div>
             </div>
-
-            {/* Pulls remaining after spend */}
-            {(() => {
-              const canAffordAtStart = forecast.canGuaranteeAtStart
-              const canAffordAtEnd = forecast.canGuaranteeAtEnd
-              const remainAtStart = canAffordAtStart
-                ? forecast.atStart.totalPulls - pityBasedPullsNeeded
-                : forecast.atStart.totalPulls
-              const remainAtEnd = canAffordAtEnd
-                ? forecast.atEnd.totalPulls - pityBasedPullsNeeded
-                : forecast.atEnd.totalPulls
-              return (
-                <div
-                  className="card p-5 flex flex-col gap-3"
-                  style={{ borderColor: canAffordAtEnd ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.25)' }}
-                >
-                  <div>
-                    <p className="label">Pulls Remaining</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {canAffordAtEnd ? 'After spending on this character' : 'Carries over — can\'t afford yet'}
-                    </p>
-                  </div>
-                  <p style={{ fontSize: '2.25rem', fontWeight: 700, color: canAffordAtEnd ? '#34d399' : '#f87171', lineHeight: 1 }}>
-                    +{remainAtEnd}
-                  </p>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">At banner start</span>
-                      <span style={{ color: canAffordAtStart ? '#34d399' : '#f87171' }}>
-                        +{remainAtStart}{!canAffordAtStart && ' (carry)'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">At banner end</span>
-                      <span style={{ color: canAffordAtEnd ? '#34d399' : '#f87171' }}>
-                        +{remainAtEnd}{!canAffordAtEnd && ' (carry)'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Pity · Status</span>
-                      <span className="text-slate-400">
-                        {forecast.pityAtTarget} · {forecast.guaranteedAtTarget ? 'Guaranteed' : '50/50'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })()}
           </div>
 
           {/* Chart */}

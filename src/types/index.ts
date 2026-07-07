@@ -32,9 +32,6 @@ export interface RecurringConfig {
   battlePassPaidPrimos: number   // primos per cycle (paid)
   battlePassPaidFates: number    // fates per cycle (paid)
   trialPrimosPerPhase: number    // primos per phase (2 trials × 20)
-  defaultEventCount: number      // number of default events pre-added to each patch
-  defaultEventPrimos: number     // primos per default event
-  defaultEventPhase2Count: number // how many of the default events fall in Phase 2
   bannerDurationDays: number     // days from phase start to phase end (default 20)
   patchLengthDays: number        // days per patch
   phase2OffsetDays: number       // days from phase 1 start to phase 2
@@ -42,10 +39,14 @@ export interface RecurringConfig {
   patchAnchorDate: string        // ISO date
   primoPerFate: number           // always 160
   starglitterPerFate: number     // starglitter needed per fate
+  maintenancePrimos: number      // patch maintenance reward, applied to every patch
+  livestreamPrimos: number       // livestream code reward, applied to every patch
+  patchTypeRewards: Record<PatchType, number> // lump-sum EVENT-ONLY reward per patch type (primos), used by Next Character's granular calc
+  patchTypeTotalWishes: Record<PatchType, number> // ALL-INCLUSIVE wishes per patch type (dailies+abyss+theatre+stygian+trials+shop+events combined), used by Roadmap's per-patch estimate
 }
 
-export interface ProjectionConfig {
-  recurring: RecurringConfig
+// Income sources a projection view can independently toggle on/off.
+export interface IncomeToggles {
   commissionsIncluded: boolean
   welkinIncluded: boolean
   spiralAbyssEnabled: boolean
@@ -54,6 +55,12 @@ export interface ProjectionConfig {
   characterTrialsEnabled: boolean
   battlePassIncluded: boolean
   monthlyShopIncluded: boolean
+}
+
+export interface ProjectionConfig extends IncomeToggles {
+  recurring: RecurringConfig
+  maintenanceIncluded: boolean
+  livestreamIncluded: boolean
   softPityCharacter: number
   hardPityCharacter: number
   softPityChronicle: number
@@ -83,21 +90,6 @@ export interface Patch {
   endDate: string
   patchType: PatchType
   phases: BannerPhase[]
-  events: PatchEvent[]
-  maintenancePrimos: number     // patch maintenance reward (editable per patch)
-  livestreamPrimos: number      // livestream code reward (editable per patch)
-  maintenanceEnabled: boolean
-  livestreamEnabled: boolean
-}
-
-export interface PatchEvent {
-  id: string
-  name: string
-  primogems: number
-  fates?: number
-  phase?: 1 | 2   // which phase the event becomes available; defaults to 1
-  enabled: boolean
-  notes?: string
 }
 
 // ── Target ────────────────────────────────────────────────────────────────────
@@ -129,10 +121,19 @@ export interface ForecastResult {
   // Shared pity info
   pityAtTarget: number
   guaranteedAtTarget: boolean
+  // Pulls needed to reach hard pity (guarantees *a* 5-star, not necessarily this character)
   pullsToPity: number
   pullsNeeded: number
+  // Worst case: pulls needed to guarantee THIS character (doubles if on 50/50, since you might lose it)
+  pullsForGuarantee: number
   canGuaranteeAtStart: boolean
   canGuaranteeAtEnd: boolean
+  // Pulls needed to reach soft pity (where 5-star drop rate starts climbing)
+  pullsToSoftPity: number
+  // Same as pullsForGuarantee, but using soft pity instead of hard pity as the per-copy cost
+  pullsForGuaranteeSoftPity: number
+  canGuaranteeAtStartSoftPity: boolean
+  canGuaranteeAtEndSoftPity: boolean
 }
 
 export interface BreakdownItem {
@@ -170,7 +171,8 @@ export interface ChainStopResult {
   daysToStop: number
   daysToEnd: number
   pullsToSpend: number      // user-set; pity carry applied internally to determine canAfford threshold
-  guaranteed: boolean       // guarantee status at this stop (carries and flips on each successful spend)
+  guaranteed: boolean       // worst-case guarantee status: assumes every 5-star costs hard pity
+  guaranteedRealistic: boolean // same, but assumes every 5-star lands at the soft/hard pity midpoint
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
   actualSpend: number       // pullsToSpend if affordable, else 0 (roll-over)
@@ -180,4 +182,4 @@ export interface ChainStopResult {
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
-export type NavTab = 'dashboard' | 'patches' | 'forecast' | 'scenarios' | 'settings'
+export type NavTab = 'next-character' | 'data-entry' | 'patches' | 'roadmap' | 'settings'

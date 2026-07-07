@@ -1,10 +1,8 @@
 import { usePlannerStore } from "@/store/usePlannerStore";
-import { runProjection } from "@/engine/projectionEngine";
 import { StatCard } from "@/components/ui/StatCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Toggle } from "@/components/ui/Toggle";
-import { format, parseISO } from "date-fns";
 
 function totalCurrentPulls(
     primogems: number,
@@ -14,13 +12,8 @@ function totalCurrentPulls(
     return Math.floor((primogems + genesisCrystals) / 160) + fates;
 }
 
-export function Dashboard() {
-    const { player, config, patches, target, updatePlayer, setNav } =
-        usePlannerStore();
-
-    const forecast = target
-        ? runProjection({ player, config, patches, target })
-        : null;
+export function DataEntry() {
+    const { player, config, updatePlayer } = usePlannerStore();
 
     const currentPulls = totalCurrentPulls(
         player.primogems,
@@ -31,17 +24,17 @@ export function Dashboard() {
 
     return (
         <div className="max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in">
-            {/* Page title */}
             <div>
                 <h1 className="text-xl font-semibold text-slate-100">
-                    Dashboard
+                    Data Entry
                 </h1>
                 <p className="text-sm text-slate-500 mt-0.5">
-                    Your current pull status and forecast at a glance.
+                    What you actually have right now — resources, pity, and active
+                    boosts. Everything here feeds both Next Character and Scenarios.
                 </p>
             </div>
 
-            {/* Current resources */}
+            {/* Current resources at a glance */}
             <section>
                 <SectionHeader title="Current Resources" />
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -107,11 +100,11 @@ export function Dashboard() {
                 </div>
             </section>
 
-            {/* Quick resource editor */}
+            {/* Editable inputs */}
             <section className="card p-5">
                 <SectionHeader
-                    title="Quick Input"
-                    sub="Edit your current resources"
+                    title="Resources & Pity"
+                    sub="Edit your current standing"
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     <NumberInput
@@ -222,124 +215,6 @@ export function Dashboard() {
                             ))}
                         </div>
                     </div>
-                </div>
-            </section>
-
-            {/* Forecast summary */}
-            <section>
-                <SectionHeader
-                    title="Forecast"
-                    sub={
-                        target
-                            ? `Target: ${target.label}`
-                            : "No target selected"
-                    }
-                    action={
-                        <button
-                            className="btn-secondary text-xs px-3 py-1.5"
-                            onClick={() => setNav("forecast")}
-                        >
-                            {target ? "Edit Target" : "Set Target →"}
-                        </button>
-                    }
-                />
-
-                {!target && (
-                    <div className="card p-8 text-center">
-                        <p className="text-slate-500 text-sm">
-                            Set a target banner in the Forecast tab to see your
-                            projection.
-                        </p>
-                        <button
-                            className="btn-primary mt-3"
-                            onClick={() => setNav("forecast")}
-                        >
-                            Go to Forecast →
-                        </button>
-                    </div>
-                )}
-
-                {forecast && forecast.atStart.cutoffDate && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                        <StatCard
-                            label="Days to Banner"
-                            value={forecast.atStart.daysToTarget}
-                            sub={format(parseISO(forecast.atStart.cutoffDate), "MMM d, yyyy")}
-                        />
-                        <StatCard
-                            label="Pulls at Start"
-                            value={forecast.atStart.totalPulls}
-                            sub={`need ${forecast.pullsNeeded}`}
-                            accent={forecast.atStart.totalPulls >= forecast.pullsNeeded ? "green" : "red"}
-                        />
-                        <StatCard
-                            label="Pulls at End"
-                            value={forecast.atEnd.totalPulls}
-                            sub={`+${config.recurring.bannerDurationDays}d`}
-                            accent={forecast.atEnd.totalPulls >= forecast.pullsNeeded ? "green" : "red"}
-                        />
-                        <StatCard
-                            label="Can Guarantee"
-                            value={forecast.canGuaranteeAtEnd ? "Yes ✓" : "No ✗"}
-                            accent={forecast.canGuaranteeAtEnd ? "green" : "red"}
-                        />
-                        <StatCard
-                            label="Pulls to Pity"
-                            value={forecast.pullsToPity}
-                            sub={`${forecast.pityAtTarget} / 90 pity`}
-                        />
-                    </div>
-                )}
-            </section>
-
-            {/* Chronicle banner */}
-            <section className="card p-5">
-                <SectionHeader
-                    title="Chronicle Banner"
-                    sub="Standalone tracker — does not affect main projection"
-                />
-                <div className="flex flex-wrap gap-6 items-center">
-                    <div className="flex-1 min-w-40">
-                        <NumberInput
-                            label="Chronicle Pity"
-                            value={player.chronicleBannerPity}
-                            max={89}
-                            onChange={(v) =>
-                                updatePlayer({ chronicleBannerPity: v })
-                            }
-                        />
-                    </div>
-                    <div className="flex flex-col gap-1 mt-1">
-                        <span className="label">Status</span>
-                        <div className="flex gap-2 flex-wrap">
-                            {player.chronicleBannerPity >=
-                                config.softPityChronicle && (
-                                <span className="tag-guaranteed">
-                                    Soft Pity ({player.chronicleBannerPity}/
-                                    {config.softPityChronicle}+)
-                                </span>
-                            )}
-                            {player.chronicleBannerGuaranteed && (
-                                <span className="tag-guaranteed">
-                                    Guaranteed
-                                </span>
-                            )}
-                            {player.chronicleBannerPity <
-                                config.softPityChronicle &&
-                                !player.chronicleBannerGuaranteed && (
-                                    <span className="text-slate-500 text-sm">
-                                        No soft pity yet
-                                    </span>
-                                )}
-                        </div>
-                    </div>
-                    <Toggle
-                        label="Chronicle Guaranteed"
-                        checked={player.chronicleBannerGuaranteed}
-                        onChange={(v) =>
-                            updatePlayer({ chronicleBannerGuaranteed: v })
-                        }
-                    />
                 </div>
             </section>
         </div>

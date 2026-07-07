@@ -159,56 +159,48 @@ function computeSnapshot(
   }
 
   // Patch Maintenance — available at patch start (Phase 1), count patches where startDate is in (today, cutoff]
-  let maintenanceTotal = 0
-  let maintenanceCount = 0
-  for (const p of patches) {
-    if (!p.maintenanceEnabled) continue
-    const pStart = parseISO(p.startDate)
-    if (pStart > today && pStart <= cutoff) {
-      maintenanceTotal += p.maintenancePrimos ?? 600
-      maintenanceCount++
-    }
-  }
-  if (maintenanceTotal > 0) {
-    gainedPrimos += maintenanceTotal
-    push({ source: `Patch Maintenance (${maintenanceCount}×)`, primogems: maintenanceTotal, fates: 0 })
+  if (config.maintenanceIncluded) {
+    const hits = patches
+      .map((p) => parseISO(p.startDate))
+      .filter((d) => d > today && d <= cutoff)
+    const primos = hits.length * r.maintenancePrimos
+    gainedPrimos += primos
+    push({ source: `Patch Maintenance (${hits.length}×)`, primogems: primos, fates: 0 })
   }
 
   // Livestream Codes — occurs 12 days before the NEXT patch's Wednesday start
-  let livestreamTotal = 0
-  let livestreamCount = 0
-  for (let i = 0; i < patches.length - 1; i++) {
-    const p = patches[i]
-    if (!p.livestreamEnabled) continue
-    const livestreamDate = addDays(parseISO(patches[i + 1].startDate), -12)
-    if (livestreamDate > today && livestreamDate <= cutoff) {
-      livestreamTotal += p.livestreamPrimos ?? 300
-      livestreamCount++
+  if (config.livestreamIncluded) {
+    const hits = []
+    for (let i = 0; i < patches.length - 1; i++) {
+      const livestreamDate = addDays(parseISO(patches[i + 1].startDate), -12)
+      if (livestreamDate > today && livestreamDate <= cutoff) hits.push(livestreamDate)
     }
-  }
-  if (livestreamTotal > 0) {
-    gainedPrimos += livestreamTotal
-    push({ source: `Livestream Codes (${livestreamCount}×)`, primogems: livestreamTotal, fates: 0 })
+    const primos = hits.length * r.livestreamPrimos
+    gainedPrimos += primos
+    push({ source: `Livestream Codes (${hits.length}×)`, primogems: primos, fates: 0 })
   }
 
-  // Custom patch events — filtering strictly by the window (today, cutoff]
-  let eventPrimos = 0
-  let eventFates = 0
+  // Patch Type reward estimate — a lump sum per patch, split 50/50 across its two phases.
+  // Only applies to patches that haven't started yet: once a patch is underway (or over),
+  // the player is expected to track its actual event income themselves via Data Entry
+  // rather than trust the generic patch-type prediction.
+  let patchTypePrimos = 0
+  let patchTypeHits = 0
   for (const p of patches) {
-    for (const ev of p.events) {
-      if (!ev.enabled) continue
-      const ph2Start = p.phases.find((ph) => ph.phase === 2)?.startDate
-      const evDate = ev.phase === 2 && ph2Start ? parseISO(ph2Start) : parseISO(p.startDate)
-      if (evDate > today && evDate <= cutoff) {
-        eventPrimos += ev.primogems
-        eventFates += ev.fates ?? 0
+    const pStart = parseISO(p.startDate)
+    if (pStart <= today) continue
+    const half = r.patchTypeRewards[p.patchType] / 2
+    for (const ph of p.phases) {
+      const phStart = parseISO(ph.startDate)
+      if (phStart > today && phStart <= cutoff) {
+        patchTypePrimos += half
+        patchTypeHits++
       }
     }
   }
-  if (eventPrimos > 0 || eventFates > 0) {
-    gainedPrimos += eventPrimos
-    gainedFates += eventFates
-    push({ source: 'Custom Events', primogems: eventPrimos, fates: eventFates })
+  if (patchTypePrimos > 0) {
+    gainedPrimos += patchTypePrimos
+    push({ source: `Patch Events (${patchTypeHits} phases)`, primogems: patchTypePrimos, fates: 0 })
   }
 
   // Starglitter
@@ -219,6 +211,114 @@ function computeSnapshot(
   }
 
   // Totals (per spec: all primos summed first, then converted together)
+  const totalPrimos = currentPrimos + gainedPrimos
+  const totalFates = currentFates + Math.floor(totalPrimos / r.primoPerFate) + gainedFates
+  const totalPulls = Math.floor(totalFates)
+
+  return {
+    cutoffDate: format(cutoff, 'yyyy-MM-dd'),
+    daysToTarget,
+    totalPrimos,
+    totalPulls,
+    breakdown,
+  }
+}
+
+// Roadmap (long-term chain) snapshot — unlike computeSnapshot, this doesn't sum the
+// granular mechanics (dailies, Abyss, Theatre, Stygian, Trials, Monthly Shop, Maintenance,
+// Livestream, patch events) one by one. Over a long multi-patch horizon that precision isn't
+// worth it, so instead each future patch just contributes one all-inclusive wish estimate per
+// patch type (calibrated from historical data), split 50/50 across its two phases. The current
+// patch is excluded — the player is expected to track it directly via Data Entry. Welkin and
+// Battle Pass are added on top, but only if the player has actually configured them.
+function computeRoadmapSnapshot(
+  player: PlayerState,
+  config: ProjectionConfig,
+  patches: Patch[],
+  cutoff: Date,
+  today: Date,
+): ForecastSnapshot {
+  const r = config.recurring
+  const daysToTarget = Math.max(0, differenceInDays(cutoff, today))
+  const breakdown: BreakdownItem[] = []
+
+  const push = (item: BreakdownItem) => {
+    if (item.primogems > 0 || item.fates > 0) breakdown.push(item)
+  }
+
+  const currentPrimos = player.primogems + player.genesisCrystals
+  const currentFates = player.intertwinedFates
+  if (currentPrimos > 0) push({ source: 'Current Primogems', primogems: currentPrimos, fates: 0 })
+  if (currentFates > 0) push({ source: 'Current Intertwined Fates', primogems: 0, fates: currentFates })
+
+  let gainedPrimos = 0
+  let gainedFates = 0
+
+  // Welkin Moon — only if actually active right now, capped to remaining days
+  if (player.welkinActive) {
+    const welkinDays = Math.min(daysToTarget, player.welkinDaysRemaining)
+    const primos = welkinDays * r.welkinDaily
+    if (primos > 0) {
+      gainedPrimos += primos
+      push({ source: 'Welkin Moon', primogems: primos, fates: 0 })
+    }
+  }
+
+  // Battle Pass — only if a mode is actually set
+  if (player.battlePassMode !== 'off') {
+    let bpPrimos = 0
+    let bpFates = 0
+    let bpCount = 0
+    for (const p of patches) {
+      const ph2 = p.phases.find((ph) => ph.phase === 2)
+      if (!ph2) continue
+      const ph2Start = parseISO(ph2.startDate)
+      if (ph2Start > today && ph2Start <= cutoff) {
+        bpCount++
+        if (player.battlePassMode === 'paid') {
+          bpPrimos += r.battlePassPaidPrimos
+          bpFates += r.battlePassPaidFates
+        }
+      }
+    }
+    if (bpCount > 0) {
+      gainedPrimos += bpPrimos
+      gainedFates += bpFates
+      push({
+        source: `Battle Pass ${player.battlePassMode === 'paid' ? 'Paid' : 'Free'} (${bpCount}×)`,
+        primogems: bpPrimos,
+        fates: bpFates,
+      })
+    }
+  }
+
+  // Patch estimate — all-inclusive wishes per patch type, split 50/50 across phases.
+  let wishEstimate = 0
+  let wishHits = 0
+  for (const p of patches) {
+    const pStart = parseISO(p.startDate)
+    if (pStart <= today) continue
+    const half = r.patchTypeTotalWishes[p.patchType] / 2
+    for (const ph of p.phases) {
+      const phStart = parseISO(ph.startDate)
+      if (phStart > today && phStart <= cutoff) {
+        wishEstimate += half
+        wishHits++
+      }
+    }
+  }
+  if (wishEstimate > 0) {
+    gainedFates += wishEstimate
+    push({ source: `Patch Estimate (${wishHits} phases)`, primogems: 0, fates: wishEstimate })
+  }
+
+  // Starglitter
+  const starglitterFates = Math.floor(player.starglitter / r.starglitterPerFate)
+  if (starglitterFates > 0) {
+    gainedFates += starglitterFates
+    push({ source: 'Starglitter', primogems: 0, fates: starglitterFates })
+  }
+
   const totalPrimos = currentPrimos + gainedPrimos
   const totalFates = currentFates + Math.floor(totalPrimos / r.primoPerFate) + gainedFates
   const totalPulls = Math.floor(totalFates)
@@ -263,10 +363,17 @@ export function runProjection(input: EngineInput): ForecastResult {
   const guaranteedAtTarget = player.characterBannerGuaranteed
   const pullsToPity = config.hardPityCharacter - pityAtTarget
 
-  // Calculate pulls for a absolute guarantee (optionally gambling on 50/50)
+  // Worst case: pulls needed to guarantee THIS character (doubles if on 50/50, since you might lose it)
   const pullsForGuarantee = config.strictGuarantee && !guaranteedAtTarget
     ? pullsToPity + config.hardPityCharacter
     : pullsToPity
+
+  // Same idea, but using soft pity as the per-copy cost instead of hard pity —
+  // where the 5-star drop rate starts climbing, rather than where it's guaranteed.
+  const pullsToSoftPity = Math.max(0, config.softPityCharacter - pityAtTarget)
+  const pullsForGuaranteeSoftPity = config.strictGuarantee && !guaranteedAtTarget
+    ? pullsToSoftPity + config.softPityCharacter
+    : pullsToSoftPity
 
   return {
     atStart,
@@ -276,8 +383,13 @@ export function runProjection(input: EngineInput): ForecastResult {
     guaranteedAtTarget,
     pullsToPity,
     pullsNeeded: target.pullsNeeded,
+    pullsForGuarantee,
     canGuaranteeAtStart: atStart.totalPulls >= pullsForGuarantee,
     canGuaranteeAtEnd: atEnd.totalPulls >= pullsForGuarantee,
+    pullsToSoftPity,
+    pullsForGuaranteeSoftPity,
+    canGuaranteeAtStartSoftPity: atStart.totalPulls >= pullsForGuaranteeSoftPity,
+    canGuaranteeAtEndSoftPity: atEnd.totalPulls >= pullsForGuaranteeSoftPity,
   }
 }
 
@@ -299,13 +411,19 @@ function emptyResult(pullsNeeded: number, player: PlayerState, config: Projectio
     guaranteedAtTarget: player.characterBannerGuaranteed,
     pullsToPity: config.hardPityCharacter - player.characterBannerPity,
     pullsNeeded,
+    pullsForGuarantee: 0,
     canGuaranteeAtStart: false,
     canGuaranteeAtEnd: false,
+    pullsToSoftPity: 0,
+    pullsForGuaranteeSoftPity: 0,
+    canGuaranteeAtStartSoftPity: false,
+    canGuaranteeAtEndSoftPity: false,
   }
 }
 
-// ── Chain Planner ─────────────────────────────────────────────────────────────
-// Each stop uses computeSnapshot(today → stop.phaseStart).
+// ── Chain Planner (Roadmap) ───────────────────────────────────────────────────
+// Each stop uses computeRoadmapSnapshot(today → stop.phaseStart), the lump per-patch
+// estimate rather than the granular short-term engine.
 // A running deficit tracks cumulative pulls spent at prior stops.
 // delta between snapshots = resources earned between two banner dates.
 
@@ -321,10 +439,15 @@ export function runChain(input: {
 
   const results: ChainStopResult[] = []
   let deficit = 0
-  
+
   // pityCarry: the pity already invested toward the next 5-star.
   let pityCarry = player.characterBannerPity
   let guaranteedCarry = player.characterBannerGuaranteed
+
+  // Realistic track: same spend/afford numbers, but assumes each 5-star lands at
+  // soft pity instead of always at hard pity.
+  let pityCarryRealistic = player.characterBannerPity
+  let guaranteedCarryRealistic = player.characterBannerGuaranteed
 
   for (const stop of chain) {
     const patch = patches.find((p) => p.id === stop.patchId)
@@ -337,8 +460,8 @@ export function runChain(input: {
     const daysToStop = Math.max(0, differenceInDays(phaseDate, today))
     const daysToEnd = Math.max(0, differenceInDays(phaseEnd, today))
 
-    const snapStart = computeSnapshot(player, config, patches, phaseDate, today)
-    const snapEnd = computeSnapshot(player, config, patches, phaseEnd, today)
+    const snapStart = computeRoadmapSnapshot(player, config, patches, phaseDate, today)
+    const snapEnd = computeRoadmapSnapshot(player, config, patches, phaseEnd, today)
 
     // availableAtEnd is the total pulls user will have at the end of this banner,
     // minus any pulls committed to previous stops in the chain.
@@ -351,25 +474,38 @@ export function runChain(input: {
     const canAfford = actualSpend > 0
 
     const guaranteed = guaranteedCarry
-    
+    const guaranteedRealistic = guaranteedCarryRealistic
+
     if (canAfford) {
       deficit += actualSpend
-      
+
       // Calculate total investment including carry-over pity
       let totalPityInvestment = pityCarry + actualSpend
-      
+
       // How many 5-stars did we hit?
       while (totalPityInvestment >= config.hardPityCharacter) {
         totalPityInvestment -= config.hardPityCharacter
         if (guaranteedCarry) {
           guaranteedCarry = false
         } else {
-          // If we hit a 5-star on 50/50, we assume worst case (lost) 
+          // If we hit a 5-star on 50/50, we assume worst case (lost)
           // unless the user spent enough to hit a second 5-star.
           guaranteedCarry = true
         }
       }
       pityCarry = totalPityInvestment
+
+      // Same spend, but each 5-star assumed to land at soft pity instead of hard pity.
+      let totalPityInvestmentRealistic = pityCarryRealistic + actualSpend
+      while (totalPityInvestmentRealistic >= config.softPityCharacter) {
+        totalPityInvestmentRealistic -= config.softPityCharacter
+        if (guaranteedCarryRealistic) {
+          guaranteedCarryRealistic = false
+        } else {
+          guaranteedCarryRealistic = true
+        }
+      }
+      pityCarryRealistic = totalPityInvestmentRealistic
     }
 
     results.push({
@@ -381,6 +517,7 @@ export function runChain(input: {
       daysToEnd,
       pullsToSpend: stop.pullsToSpend, // User's requested spend
       guaranteed,
+      guaranteedRealistic,
       availableAtStart,
       availableAtEnd,
       actualSpend,

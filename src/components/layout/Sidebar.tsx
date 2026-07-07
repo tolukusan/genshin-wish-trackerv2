@@ -4,10 +4,10 @@ import { clsx } from 'clsx'
 import { parseISO, isWithinInterval, format } from 'date-fns'
 
 const NAV: { tab: NavTab; label: string; icon: string }[] = [
-  { tab: 'dashboard', label: 'Dashboard', icon: '⬡' },
+  { tab: 'next-character', label: 'Next Character', icon: '◎' },
+  { tab: 'data-entry', label: 'Data Entry', icon: '⬡' },
   { tab: 'patches', label: 'Patches', icon: '◈' },
-  { tab: 'forecast', label: 'Forecast', icon: '◎' },
-  { tab: 'scenarios', label: 'Scenarios', icon: '⇢' },
+  { tab: 'roadmap', label: 'Roadmap', icon: '⇢' },
   { tab: 'settings', label: 'Settings', icon: '⚙' },
 ]
 

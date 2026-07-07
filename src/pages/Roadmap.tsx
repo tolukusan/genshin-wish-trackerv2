@@ -4,7 +4,22 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { NumberInput } from '@/components/ui/NumberInput'
 import { format, parseISO } from 'date-fns'
 
-export function Scenarios() {
+// Same three-tier language as Next Character: safe = your planned spend goes through,
+// partial = not your full plan, but still enough for *a* character, none = rolls over.
+type Tier = 'safe' | 'partial' | 'none'
+function affordTier(canAfford: boolean, availableAtEnd: number, hardPity: number): Tier {
+  if (canAfford) return 'safe'
+  if (availableAtEnd >= hardPity) return 'partial'
+  return 'none'
+}
+const tierColor: Record<Tier, string> = { safe: '#34d399', partial: '#f0b429', none: '#f87171' }
+const tierLabel: Record<Tier, string> = {
+  safe: 'Spending as planned ✓',
+  partial: 'Enough for a character, not full spend',
+  none: 'Rolls over — not enough yet',
+}
+
+export function Roadmap() {
   const { player, config, patches, chain, addChainStop, updateChainStop, deleteChainStop, moveChainStop } =
     usePlannerStore()
 
@@ -13,9 +28,10 @@ export function Scenarios() {
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-fade-in">
       <div>
-        <h1 className="text-xl font-semibold text-slate-100">Scenarios</h1>
+        <h1 className="text-xl font-semibold text-slate-100">Roadmap</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Plan a sequence of banners. Set how many pulls you'll spend at each stop and see if the math works out.
+          Plan a sequence of future banners using per-patch wish estimates. Separate from Next Character —
+          nothing spent here affects that projection.
         </p>
       </div>
 
@@ -43,6 +59,7 @@ export function Scenarios() {
           const availableAtStart = result?.availableAtStart ?? 0
           const availableAtEnd = result?.availableAtEnd ?? 0
           const remainingAfter = result?.remainingAfter ?? 0
+          const tier = affordTier(canAfford, availableAtEnd, config.hardPityCharacter)
 
           return (
             <div
@@ -50,7 +67,7 @@ export function Scenarios() {
               style={{
                 borderRadius: '0.75rem',
                 border: '1px solid',
-                borderColor: canAfford ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.25)',
+                borderColor: tier === 'safe' ? 'rgba(16,185,129,0.3)' : tier === 'partial' ? 'rgba(240,180,41,0.3)' : 'rgba(239,68,68,0.25)',
                 backgroundColor: 'rgba(15,23,42,0.4)',
                 padding: '1rem',
               }}
@@ -68,10 +85,10 @@ export function Scenarios() {
                     fontSize: '0.7rem',
                     fontWeight: 700,
                     flexShrink: 0,
-                    backgroundColor: canAfford ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.15)',
-                    color: canAfford ? '#34d399' : '#f87171',
+                    backgroundColor: tier === 'safe' ? 'rgba(16,185,129,0.2)' : tier === 'partial' ? 'rgba(240,180,41,0.2)' : 'rgba(239,68,68,0.15)',
+                    color: tierColor[tier],
                     border: '1px solid',
-                    borderColor: canAfford ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.3)',
+                    borderColor: tier === 'safe' ? 'rgba(16,185,129,0.4)' : tier === 'partial' ? 'rgba(240,180,41,0.4)' : 'rgba(239,68,68,0.3)',
                   }}
                 >
                   {idx + 1}
@@ -189,18 +206,28 @@ export function Scenarios() {
                       <span className="text-slate-500">At end</span>
                       <span className="text-slate-200 font-medium">{availableAtEnd}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">
-                        {canAfford ? 'After spend' : 'Rolls over'}
+                    <div className="flex justify-between text-xs mt-0.5">
+                      <span className="text-slate-500">Status</span>
+                      <span style={{ color: tierColor[tier], fontWeight: 600 }}>
+                        {tierLabel[tier]}
                       </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500">Remaining</span>
                       <span style={{ color: '#34d399', fontWeight: 500 }}>
                         +{remainingAfter}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs mt-0.5">
-                      <span className="text-slate-500">Can afford</span>
-                      <span style={{ color: canAfford ? '#34d399' : '#f87171', fontWeight: 600 }}>
-                        {canAfford ? 'Yes ✓' : 'No ✗'}
+                      <span className="text-slate-500">Worst case</span>
+                      <span style={{ color: result?.guaranteed ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                        {result?.guaranteed ? 'Guaranteed' : '50/50'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500">Soft pity</span>
+                      <span style={{ color: result?.guaranteedRealistic ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                        {result?.guaranteedRealistic ? 'Guaranteed' : '50/50'}
                       </span>
                     </div>
                   </div>
@@ -219,7 +246,7 @@ export function Scenarios() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(51,65,85,0.6)' }}>
-                  {['#', 'Banner', 'Window', '@Start', '@End', 'Spend', 'Remaining', 'Status', 'OK?'].map((h) => (
+                  {['#', 'Banner', 'Window', '@Start', '@End', 'Spend', 'Remaining', 'Worst case', 'Soft pity', 'Status'].map((h) => (
                     <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>
                       {h}
                     </th>
@@ -227,35 +254,41 @@ export function Scenarios() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((r, i) => (
-                  <tr
-                    key={r.stop.id}
-                    style={{ borderBottom: '1px solid rgba(30,41,59,0.6)' }}
-                  >
-                    <td style={{ padding: '0.5rem 0.75rem', color: '#64748b' }}>{i + 1}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: '#cbd5e1' }}>
-                      v{r.patchVersion} P{r.stop.phase}
-                      {r.stop.label ? ` · ${r.stop.label}` : ''}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                      {format(parseISO(r.phaseDate), 'MMM d')}–{format(parseISO(r.phaseEndDate), 'MMM d')}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: '#e2e8f0', fontWeight: 600 }}>{r.availableAtStart}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: '#a78bfa', fontWeight: 600 }}>{r.availableAtEnd}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: r.canAfford ? '#94a3b8' : '#f87171' }}>
-                      {r.canAfford ? r.pullsToSpend : `skip (${r.pullsToSpend})`}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#34d399' : '#f87171' }}>
-                      {r.remainingAfter >= 0 ? '+' : ''}{r.remainingAfter}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteed ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
-                      {r.guaranteed ? 'Guaranteed' : '50/50'}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 700, color: r.canAfford ? '#34d399' : '#f87171' }}>
-                      {r.canAfford ? '✓' : '✗'}
-                    </td>
-                  </tr>
-                ))}
+                {results.map((r, i) => {
+                  const tier = affordTier(r.canAfford, r.availableAtEnd, config.hardPityCharacter)
+                  return (
+                    <tr
+                      key={r.stop.id}
+                      style={{ borderBottom: '1px solid rgba(30,41,59,0.6)' }}
+                    >
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#64748b' }}>{i + 1}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#cbd5e1' }}>
+                        v{r.patchVersion} P{r.stop.phase}
+                        {r.stop.label ? ` · ${r.stop.label}` : ''}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                        {format(parseISO(r.phaseDate), 'MMM d')}–{format(parseISO(r.phaseEndDate), 'MMM d')}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#e2e8f0', fontWeight: 600 }}>{r.availableAtStart}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#a78bfa', fontWeight: 600 }}>{r.availableAtEnd}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: tierColor[tier] }}>
+                        {r.canAfford ? r.pullsToSpend : `skip (${r.pullsToSpend})`}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#34d399' : '#f87171' }}>
+                        {r.remainingAfter >= 0 ? '+' : ''}{r.remainingAfter}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteed ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                        {r.guaranteed ? 'Guaranteed' : '50/50'}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteedRealistic ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                        {r.guaranteedRealistic ? 'Guaranteed' : '50/50'}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', fontWeight: 700, color: tierColor[tier] }}>
+                        {tier === 'safe' ? '✓' : tier === 'partial' ? '~' : '✗'}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
