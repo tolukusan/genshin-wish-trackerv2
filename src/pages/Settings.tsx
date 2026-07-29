@@ -95,7 +95,7 @@ export function Settings() {
     return (
         <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-fade-in">
             <div>
-                <h1 className="text-xl font-semibold text-slate-100">
+                <h1 className="text-xl font-semibold text-slate-900">
                     Settings
                 </h1>
                 <p className="text-sm text-slate-500 mt-0.5">

@@ -16,7 +16,7 @@ export function Patches() {
         <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-fade-in">
             <div className="flex items-start justify-between">
                 <div>
-                    <h1 className="text-xl font-semibold text-slate-100">
+                    <h1 className="text-xl font-semibold text-slate-900">
                         Patches
                     </h1>
                     <p className="text-sm text-slate-500 mt-0.5">
@@ -32,7 +32,7 @@ export function Patches() {
             <div className="card overflow-hidden">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="border-b border-slate-700/50 text-left">
+                        <tr className="border-b border-slate-300/50 text-left">
                             <th className="p-3 text-xs font-medium text-slate-500">Version</th>
                             <th className="p-3 text-xs font-medium text-slate-500">Window</th>
                             <th className="p-3 text-xs font-medium text-slate-500">Patch Type</th>
@@ -41,11 +41,11 @@ export function Patches() {
                     </thead>
                     <tbody>
                         {patches.map((patch) => (
-                            <tr key={patch.id} className="border-b border-slate-800/50 last:border-0">
+                            <tr key={patch.id} className="border-b border-slate-200/50 last:border-0">
                                 <td className="p-3 text-accent-purple font-semibold">
                                     v{patch.version}
                                 </td>
-                                <td className="p-3 text-slate-300">
+                                <td className="p-3 text-slate-700">
                                     {format(parseISO(patch.startDate), "MMM d")} –{" "}
                                     {format(parseISO(patch.endDate), "MMM d, yyyy")}
                                 </td>

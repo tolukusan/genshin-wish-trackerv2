@@ -13,7 +13,7 @@ import type { Patch } from '@/types'
 // any 5-star yet), amber for a softer/not-guaranteed-yet goal.
 function NeedLine({ label, need, blocker = false }: { label: string; need: number; blocker?: boolean }) {
   const met = need <= 0
-  const color = met ? '#34d399' : blocker ? '#f87171' : '#f0b429'
+  const color = met ? '#059669' : blocker ? '#dc2626' : '#b45309'
   return (
     <div className="flex items-center justify-between text-xs">
       <span className="text-slate-500">{label}</span>
@@ -92,7 +92,7 @@ export function NextCharacter() {
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in">
       <div>
-        <h1 className="text-xl font-semibold text-slate-100">Next Character</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Next Character</h1>
         <p className="text-sm text-slate-500 mt-0.5">Your pull projection toward the next banner you're saving for.</p>
       </div>
 
@@ -146,9 +146,9 @@ export function NextCharacter() {
             <div style={{
               padding: '0.45rem 0.75rem',
               borderRadius: '0.5rem',
-              border: '1px solid rgba(71,85,105,0.4)',
-              background: 'rgba(15,23,42,0.5)',
-              color: '#a78bfa',
+              border: '1px solid rgba(203,213,225,0.9)',
+              background: 'rgba(241,245,249,0.8)',
+              color: '#6d28d9',
               fontWeight: 700,
               fontSize: '1.05rem',
             }}>
@@ -184,7 +184,7 @@ export function NextCharacter() {
                   {' · '}{forecast.atStart.daysToTarget}d away
                 </p>
               </div>
-              <p style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>
+              <p style={{ fontSize: '2.25rem', fontWeight: 700, color: '#0f172a', lineHeight: 1 }}>
                 {forecast.atStart.totalPulls}
               </p>
               <div className="flex flex-col gap-1">
@@ -220,7 +220,7 @@ export function NextCharacter() {
                   {' · '}{forecast.atEnd.daysToTarget}d away
                 </p>
               </div>
-              <p style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>
+              <p style={{ fontSize: '2.25rem', fontWeight: 700, color: '#0f172a', lineHeight: 1 }}>
                 {forecast.atEnd.totalPulls}
               </p>
               <div className="flex flex-col gap-1">
@@ -258,17 +258,17 @@ export function NextCharacter() {
                         <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.4} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" strokeOpacity={0.4} />
                     <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
                     <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
                     <Tooltip
-                      contentStyle={{ background: '#1a2332', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
-                      labelStyle={{ color: '#94a3b8' }}
-                      itemStyle={{ color: '#a78bfa' }}
+                      contentStyle={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ color: '#475569' }}
+                      itemStyle={{ color: '#6d28d9' }}
                     />
                     {scaled && (
                       <ReferenceLine y={scaled.pullsToPity} stroke="#d4af37" strokeDasharray="4 2"
-                        label={{ value: `Need ${scaled.pullsToPity}`, fill: '#d4af37', fontSize: 11 }} />
+                        label={{ value: `Need ${scaled.pullsToPity}`, fill: '#b45309', fontSize: 11 }} />
                     )}
                     <Area type="monotone" dataKey="cumulativePulls" stroke="#7c3aed" strokeWidth={2} fill="url(#pullGrad)" name="Pulls" />
                   </AreaChart>
@@ -284,19 +284,19 @@ export function NextCharacter() {
               {/* Start breakdown */}
               <div>
                 <p className="label mb-2">At Banner Start</p>
-                <div className="flex flex-col divide-y divide-slate-700/40">
+                <div className="flex flex-col divide-y divide-slate-300/40">
                   {forecast.atStart.breakdown.map((item, i) => (
                     <div key={i} className="flex items-center justify-between py-2 text-xs">
-                      <span className="text-slate-400">{item.source}</span>
+                      <span className="text-slate-600">{item.source}</span>
                       <div className="flex gap-3 text-right">
-                        {item.primogems > 0 && <span className="text-slate-300">{item.primogems.toLocaleString()} <span className="text-slate-600">✦</span></span>}
-                        {item.fates > 0 && <span style={{ color: '#f0d060' }}>{item.fates} <span className="text-slate-600">fates</span></span>}
+                        {item.primogems > 0 && <span className="text-slate-700">{item.primogems.toLocaleString()} <span className="text-slate-400">✦</span></span>}
+                        {item.fates > 0 && <span style={{ color: '#b45309' }}>{item.fates} <span className="text-slate-400">fates</span></span>}
                       </div>
                     </div>
                   ))}
                   <div className="flex items-center justify-between py-2 text-sm font-semibold">
-                    <span className="text-slate-100">Total Pulls</span>
-                    <span style={{ color: '#a78bfa' }}>{forecast.atStart.totalPulls}</span>
+                    <span className="text-slate-900">Total Pulls</span>
+                    <span style={{ color: '#6d28d9' }}>{forecast.atStart.totalPulls}</span>
                   </div>
                 </div>
               </div>
@@ -304,28 +304,28 @@ export function NextCharacter() {
               {/* End breakdown — incremental only */}
               <div>
                 <p className="label mb-2">At Banner End (+{config.recurring.bannerDurationDays}d)</p>
-                <div className="flex flex-col divide-y divide-slate-700/40">
+                <div className="flex flex-col divide-y divide-slate-300/40">
                   {/* Summary of what was already counted at banner start */}
                   <div className="flex items-center justify-between py-2 text-xs">
-                    <span className="text-slate-400">At banner start</span>
-                    <span className="text-slate-300 font-semibold">{forecast.atStart.totalPulls} pulls</span>
+                    <span className="text-slate-600">At banner start</span>
+                    <span className="text-slate-700 font-semibold">{forecast.atStart.totalPulls} pulls</span>
                   </div>
                   {/* Only the new income earned during the banner window */}
                   {forecast.deltaAtEnd.breakdown.map((item, i) => (
                     <div key={i} className="flex items-center justify-between py-2 text-xs">
-                      <span className="text-slate-400">{item.source}</span>
+                      <span className="text-slate-600">{item.source}</span>
                       <div className="flex gap-3 text-right">
-                        {item.primogems > 0 && <span className="text-slate-300">{item.primogems.toLocaleString()} <span className="text-slate-600">✦</span></span>}
-                        {item.fates > 0 && <span style={{ color: '#f0d060' }}>{item.fates} <span className="text-slate-600">fates</span></span>}
+                        {item.primogems > 0 && <span className="text-slate-700">{item.primogems.toLocaleString()} <span className="text-slate-400">✦</span></span>}
+                        {item.fates > 0 && <span style={{ color: '#b45309' }}>{item.fates} <span className="text-slate-400">fates</span></span>}
                       </div>
                     </div>
                   ))}
                   {forecast.deltaAtEnd.breakdown.length === 0 && (
-                    <div className="py-2 text-xs text-slate-600">No additional income during banner window</div>
+                    <div className="py-2 text-xs text-slate-400">No additional income during banner window</div>
                   )}
                   <div className="flex items-center justify-between py-2 text-sm font-semibold">
-                    <span className="text-slate-100">Total Pulls</span>
-                    <span style={{ color: '#a78bfa' }}>{forecast.atEnd.totalPulls}</span>
+                    <span className="text-slate-900">Total Pulls</span>
+                    <span style={{ color: '#6d28d9' }}>{forecast.atEnd.totalPulls}</span>
                   </div>
                 </div>
               </div>

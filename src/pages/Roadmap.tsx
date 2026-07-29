@@ -12,7 +12,7 @@ function affordTier(canAfford: boolean, availableAtEnd: number, hardPity: number
   if (availableAtEnd >= hardPity) return 'partial'
   return 'none'
 }
-const tierColor: Record<Tier, string> = { safe: '#34d399', partial: '#f0b429', none: '#f87171' }
+const tierColor: Record<Tier, string> = { safe: '#059669', partial: '#b45309', none: '#dc2626' }
 const tierLabel: Record<Tier, string> = {
   safe: 'Spending as planned ✓',
   partial: 'Enough for a character, not full spend',
@@ -28,7 +28,7 @@ export function Roadmap() {
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-fade-in">
       <div>
-        <h1 className="text-xl font-semibold text-slate-100">Roadmap</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Roadmap</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           Plan a sequence of future banners using per-patch wish estimates. Separate from Next Character —
           nothing spent here affects that projection.
@@ -68,7 +68,7 @@ export function Roadmap() {
                 borderRadius: '0.75rem',
                 border: '1px solid',
                 borderColor: tier === 'safe' ? 'rgba(16,185,129,0.3)' : tier === 'partial' ? 'rgba(240,180,41,0.3)' : 'rgba(239,68,68,0.25)',
-                backgroundColor: 'rgba(15,23,42,0.4)',
+                backgroundColor: 'rgba(241,245,249,0.7)',
                 padding: '1rem',
               }}
             >
@@ -93,7 +93,7 @@ export function Roadmap() {
                 >
                   {idx + 1}
                 </span>
-                <span className="text-xs text-slate-400 flex-1">
+                <span className="text-xs text-slate-600 flex-1">
                   {result
                     ? `v${result.patchVersion} Phase ${stop.phase} · ${format(parseISO(result.phaseDate), 'MMM d')}–${format(parseISO(result.phaseEndDate), 'MMM d, yyyy')} · ${result.daysToStop}d away`
                     : 'Select a banner'}
@@ -106,9 +106,9 @@ export function Roadmap() {
                       padding: '0.2rem 0.45rem',
                       fontSize: '0.7rem',
                       borderRadius: '0.375rem',
-                      border: '1px solid rgba(71,85,105,0.5)',
+                      border: '1px solid rgba(203,213,225,0.9)',
                       background: 'transparent',
-                      color: idx === 0 ? '#334155' : '#64748b',
+                      color: idx === 0 ? '#cbd5e1' : '#64748b',
                       cursor: idx === 0 ? 'not-allowed' : 'pointer',
                     }}
                   >
@@ -121,9 +121,9 @@ export function Roadmap() {
                       padding: '0.2rem 0.45rem',
                       fontSize: '0.7rem',
                       borderRadius: '0.375rem',
-                      border: '1px solid rgba(71,85,105,0.5)',
+                      border: '1px solid rgba(203,213,225,0.9)',
                       background: 'transparent',
-                      color: idx === chain.length - 1 ? '#334155' : '#64748b',
+                      color: idx === chain.length - 1 ? '#cbd5e1' : '#64748b',
                       cursor: idx === chain.length - 1 ? 'not-allowed' : 'pointer',
                     }}
                   >
@@ -137,7 +137,7 @@ export function Roadmap() {
                       borderRadius: '0.375rem',
                       border: '1px solid rgba(239,68,68,0.3)',
                       background: 'transparent',
-                      color: '#f87171',
+                      color: '#dc2626',
                       cursor: 'pointer',
                     }}
                   >
@@ -200,11 +200,11 @@ export function Roadmap() {
                   <div className="flex flex-col gap-0.5 pt-1">
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">At start</span>
-                      <span className="text-slate-200 font-medium">{availableAtStart}</span>
+                      <span className="text-slate-800 font-medium">{availableAtStart}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">At end</span>
-                      <span className="text-slate-200 font-medium">{availableAtEnd}</span>
+                      <span className="text-slate-800 font-medium">{availableAtEnd}</span>
                     </div>
                     <div className="flex justify-between text-xs mt-0.5">
                       <span className="text-slate-500">Status</span>
@@ -214,19 +214,19 @@ export function Roadmap() {
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">Remaining</span>
-                      <span style={{ color: '#34d399', fontWeight: 500 }}>
+                      <span style={{ color: '#059669', fontWeight: 500 }}>
                         +{remainingAfter}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs mt-0.5">
                       <span className="text-slate-500">Worst case</span>
-                      <span style={{ color: result?.guaranteed ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                      <span style={{ color: result?.guaranteed ? '#059669' : '#64748b', fontSize: '0.75rem' }}>
                         {result?.guaranteed ? 'Guaranteed' : '50/50'}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-slate-500">Soft pity</span>
-                      <span style={{ color: result?.guaranteedRealistic ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                      <span style={{ color: result?.guaranteedRealistic ? '#059669' : '#64748b', fontSize: '0.75rem' }}>
                         {result?.guaranteedRealistic ? 'Guaranteed' : '50/50'}
                       </span>
                     </div>
@@ -245,7 +245,7 @@ export function Roadmap() {
           <div className="overflow-x-auto">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(51,65,85,0.6)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(203,213,225,0.7)' }}>
                   {['#', 'Banner', 'Window', '@Start', '@End', 'Spend', 'Remaining', 'Worst case', 'Soft pity', 'Status'].map((h) => (
                     <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>
                       {h}
@@ -259,28 +259,28 @@ export function Roadmap() {
                   return (
                     <tr
                       key={r.stop.id}
-                      style={{ borderBottom: '1px solid rgba(30,41,59,0.6)' }}
+                      style={{ borderBottom: '1px solid rgba(226,232,240,0.6)' }}
                     >
                       <td style={{ padding: '0.5rem 0.75rem', color: '#64748b' }}>{i + 1}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: '#cbd5e1' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#334155' }}>
                         v{r.patchVersion} P{r.stop.phase}
                         {r.stop.label ? ` · ${r.stop.label}` : ''}
                       </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>
                         {format(parseISO(r.phaseDate), 'MMM d')}–{format(parseISO(r.phaseEndDate), 'MMM d')}
                       </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: '#e2e8f0', fontWeight: 600 }}>{r.availableAtStart}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: '#a78bfa', fontWeight: 600 }}>{r.availableAtEnd}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#1e293b', fontWeight: 600 }}>{r.availableAtStart}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#6d28d9', fontWeight: 600 }}>{r.availableAtEnd}</td>
                       <td style={{ padding: '0.5rem 0.75rem', color: tierColor[tier] }}>
                         {r.canAfford ? r.pullsToSpend : `skip (${r.pullsToSpend})`}
                       </td>
-                      <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#34d399' : '#f87171' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#059669' : '#dc2626' }}>
                         {r.remainingAfter >= 0 ? '+' : ''}{r.remainingAfter}
                       </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteed ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteed ? '#059669' : '#64748b', fontSize: '0.75rem' }}>
                         {r.guaranteed ? 'Guaranteed' : '50/50'}
                       </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteedRealistic ? '#34d399' : '#94a3b8', fontSize: '0.75rem' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteedRealistic ? '#059669' : '#64748b', fontSize: '0.75rem' }}>
                         {r.guaranteedRealistic ? 'Guaranteed' : '50/50'}
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem', fontWeight: 700, color: tierColor[tier] }}>
