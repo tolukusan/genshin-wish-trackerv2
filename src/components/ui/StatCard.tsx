@@ -15,15 +15,15 @@ const accentMap = {
   gold: 'border-accent-gold/30',
   green: 'border-emerald-500/30',
   red: 'border-red-500/30',
-  default: 'border-slate-700/50',
+  default: 'border-slate-300/50',
 }
 
 const iconMap = {
   purple: 'text-accent-purple-light',
   gold: 'text-accent-gold-light',
-  green: 'text-emerald-400',
-  red: 'text-red-400',
-  default: 'text-slate-400',
+  green: 'text-emerald-600',
+  red: 'text-red-600',
+  default: 'text-slate-600',
 }
 
 export function StatCard({ label, value, sub, icon, accent = 'default', className }: StatCardProps) {
@@ -33,7 +33,7 @@ export function StatCard({ label, value, sub, icon, accent = 'default', classNam
         <span className="label">{label}</span>
         {icon && <span className={clsx('text-lg', iconMap[accent])}>{icon}</span>}
       </div>
-      <span className="text-2xl font-semibold text-slate-100 tabular-nums">{value}</span>
+      <span className="text-2xl font-semibold text-slate-900 tabular-nums">{value}</span>
       {sub && <span className="text-xs text-slate-500">{sub}</span>}
     </div>
   )

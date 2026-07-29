@@ -9,7 +9,7 @@ export function Toggle({ label, checked, onChange, hint }: ToggleProps) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', cursor: 'pointer' }}>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: '0.875rem', color: '#e2e8f0' }}>{label}</span>
+        <span style={{ fontSize: '0.875rem', color: '#1e293b' }}>{label}</span>
         {hint && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{hint}</span>}
       </div>
       <button
@@ -25,7 +25,7 @@ export function Toggle({ label, checked, onChange, hint }: ToggleProps) {
           border: 'none',
           cursor: 'pointer',
           flexShrink: 0,
-          backgroundColor: checked ? '#7c3aed' : '#475569',
+          backgroundColor: checked ? '#7c3aed' : '#cbd5e1',
           transition: 'background-color 0.2s',
           outline: 'none',
         }}

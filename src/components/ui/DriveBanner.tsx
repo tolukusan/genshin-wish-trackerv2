@@ -47,24 +47,24 @@ export function DriveBanner() {
       bottom: '1.25rem',
       right: '1.25rem',
       zIndex: 50,
-      backgroundColor: '#1e293b',
+      backgroundColor: '#ffffff',
       border: '1px solid rgba(124,58,237,0.4)',
       borderRadius: '0.75rem',
       padding: '1rem 1.25rem',
       maxWidth: '22rem',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+      boxShadow: '0 8px 32px rgba(15,23,42,0.15)',
       display: 'flex',
       flexDirection: 'column',
       gap: '0.75rem',
     }}>
       <div>
-        <p className="text-sm font-semibold text-slate-100">Drive data found</p>
+        <p className="text-sm font-semibold text-slate-900">Drive data found</p>
         {lastSync && (
           <p className="text-xs text-slate-500 mt-0.5">
             Last saved: {new Date(lastSync).toLocaleString()}
           </p>
         )}
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-slate-600 mt-1">
           Use your saved Drive data, or keep the current browser data?
         </p>
       </div>

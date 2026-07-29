@@ -41,13 +41,13 @@ export function Sidebar() {
     : `${config.recurring.patchLengthDays}d cycles`
 
   return (
-    <aside className="w-56 shrink-0 bg-navy-800 border-r border-slate-700/50 flex flex-col">
+    <aside className="w-56 shrink-0 bg-navy-800 border-r border-slate-300/50 flex flex-col">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-slate-700/50">
+      <div className="px-5 py-5 border-b border-slate-300/50">
         <div className="flex items-center gap-2">
           <span className="text-accent-purple text-xl">✦</span>
           <div>
-            <p className="text-sm font-semibold text-slate-100 leading-tight">Teyvat Pull</p>
+            <p className="text-sm font-semibold text-slate-900 leading-tight">Teyvat Pull</p>
             <p className="text-xs text-slate-500 leading-tight">Planner</p>
           </div>
         </div>
@@ -63,7 +63,7 @@ export function Sidebar() {
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left w-full',
               nav === tab
                 ? 'bg-accent-purple/20 text-accent-purple-light border border-accent-purple/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/40'
+                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-300/40'
             )}
           >
             <span className="text-base w-5 text-center">{icon}</span>
@@ -73,8 +73,8 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-slate-700/50">
-        <p className="text-xs text-slate-400">{footerLine1}</p>
+      <div className="px-5 py-4 border-t border-slate-300/50">
+        <p className="text-xs text-slate-600">{footerLine1}</p>
         <p className="text-xs text-slate-500">{footerLine2}</p>
       </div>
     </aside>

@@ -21,8 +21,8 @@ export function BottomNav() {
         left: 0,
         right: 0,
         zIndex: 40,
-        backgroundColor: '#0f1729',
-        borderTop: '1px solid rgba(51,65,85,0.6)',
+        backgroundColor: '#ffffff',
+        borderTop: '1px solid rgba(203,213,225,0.8)',
         display: 'flex',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}

@@ -25,7 +25,7 @@ export function DataEntry() {
     return (
         <div className="max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in">
             <div>
-                <h1 className="text-xl font-semibold text-slate-100">
+                <h1 className="text-xl font-semibold text-slate-900">
                     Data Entry
                 </h1>
                 <p className="text-sm text-slate-500 mt-0.5">
@@ -156,7 +156,7 @@ export function DataEntry() {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-700/40">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-300/40">
                     <Toggle
                         label="Guaranteed (lost last 50/50)"
                         checked={player.characterBannerGuaranteed}
@@ -203,9 +203,9 @@ export function DataEntry() {
                                         fontSize: '0.75rem',
                                         fontWeight: 500,
                                         cursor: 'pointer',
-                                        borderColor: player.battlePassMode === mode ? '#7c3aed' : 'rgba(71,85,105,0.6)',
-                                        backgroundColor: player.battlePassMode === mode ? 'rgba(124,58,237,0.2)' : 'transparent',
-                                        color: player.battlePassMode === mode ? '#a78bfa' : '#94a3b8',
+                                        borderColor: player.battlePassMode === mode ? '#7c3aed' : 'rgba(203,213,225,0.9)',
+                                        backgroundColor: player.battlePassMode === mode ? 'rgba(124,58,237,0.12)' : 'transparent',
+                                        color: player.battlePassMode === mode ? '#6d28d9' : '#64748b',
                                         transition: 'all 0.15s',
                                         textTransform: 'capitalize',
                                     }}
