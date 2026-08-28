@@ -20,6 +20,11 @@ export interface PlayerState {
   battlePassMode: 'off' | 'free' | 'paid'
 }
 
+// ── Patches & reward drivers ─────────────────────────────────────────────────
+
+export type PatchType = 'standard' | 'sub-area' | 'new-region'
+export type PatchModifier = 'anniversary' | 'lantern-rite'
+
 // ── Config (all user-editable per issues2.md) ────────────────────────────────
 
 export interface RecurringConfig {
@@ -41,8 +46,10 @@ export interface RecurringConfig {
   starglitterPerFate: number     // starglitter needed per fate
   maintenancePrimos: number      // patch maintenance reward, applied to every patch
   livestreamPrimos: number       // livestream code reward, applied to every patch
-  patchTypeRewards: Record<PatchType, number> // lump-sum EVENT-ONLY reward per patch type (primos), used by Next Character's granular calc
-  patchTypeTotalWishes: Record<PatchType, number> // ALL-INCLUSIVE wishes per patch type (dailies+abyss+theatre+stygian+trials+shop+events combined), used by Roadmap's per-patch estimate
+  patchTypeRewards: Record<PatchType, number> // base EVENT-ONLY reward by content type (primos), used by Next Character
+  patchModifierRewards: Record<PatchModifier, number> // additive EVENT-ONLY bonus by special patch modifier (primos)
+  patchTypeTotalWishes: Record<PatchType, number> // base ALL-INCLUSIVE wishes by content type, used by Roadmap
+  patchModifierTotalWishes: Record<PatchModifier, number> // additive ALL-INCLUSIVE wish bonus by special patch modifier
 }
 
 // Income sources a projection view can independently toggle on/off.
@@ -81,14 +88,13 @@ export interface BannerPhase {
   notes?: string
 }
 
-export type PatchType = 'standard' | 'sub-area' | 'lantern-rite' | 'new-region'
-
 export interface Patch {
   id: string
   version: string
   startDate: string
   endDate: string
   patchType: PatchType
+  modifiers: PatchModifier[]
   phases: BannerPhase[]
 }
 
