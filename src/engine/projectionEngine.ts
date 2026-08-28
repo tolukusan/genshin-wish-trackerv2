@@ -371,10 +371,16 @@ export function runProjection(input: EngineInput): ForecastResult {
   // We use Math.max(today, phaseStart) so that if the banner is already active,
   // the delta reflects only the income REMAINING until the banner ends.
   const deltaStart = today > phaseStart ? today : phaseStart
+  const elapsedBeforeDelta = Math.max(0, differenceInDays(deltaStart, today))
+  const remainingWelkinDays = player.welkinActive
+    ? Math.max(0, player.welkinDaysRemaining - elapsedBeforeDelta)
+    : 0
   const zeroPlayer: PlayerState = {
     ...player,
     primogems: 0, genesisCrystals: 0, intertwinedFates: 0,
     starglitter: 0, stardust: 0, acquaintFates: 0,
+    welkinActive: player.welkinActive && remainingWelkinDays > 0,
+    welkinDaysRemaining: remainingWelkinDays,
   }
   const deltaAtEnd = computeSnapshot(zeroPlayer, config, patches, phaseEnd, deltaStart)
 
