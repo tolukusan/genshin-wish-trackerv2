@@ -6,6 +6,7 @@ import type {
     RecurringConfig,
     Patch,
     PatchType,
+    PatchModifier,
     BannerPhase,
     Target,
     Scenario,
@@ -36,17 +37,25 @@ const defaultRecurring: RecurringConfig = {
     starglitterPerFate: 5,
     maintenancePrimos: 600,
     livestreamPrimos: 300,
+    // Base content only. Special rewards such as Anniversary and Lantern Rite
+    // are additive modifiers below, so overlapping reward drivers stack.
     patchTypeRewards: {
         standard: 3052,
         "sub-area": 4812,
-        "lantern-rite": 9820,
-        "new-region": 12140,
+        "new-region": 9670,
+    },
+    patchModifierRewards: {
+        anniversary: 3200,
+        "lantern-rite": 6768,
     },
     patchTypeTotalWishes: {
         standard: 67,
         "sub-area": 78,
-        "lantern-rite": 87,
-        "new-region": 128,
+        "new-region": 102,
+    },
+    patchModifierTotalWishes: {
+        anniversary: 24,
+        "lantern-rite": 20,
     },
 };
 
@@ -91,6 +100,12 @@ const defaultPlayer: PlayerState = {
     battlePassMode: "off",
 };
 
+function knownModifiersForVersion(version: string): PatchModifier[] {
+    if (version === "7.1") return ["anniversary"];
+    if (version === "7.4") return ["lantern-rite"];
+    return [];
+}
+
 function buildSeedPatches(
     anchor: string,
     anchorVersion: string,
@@ -106,13 +121,15 @@ function buildSeedPatches(
     for (let i = 0; i < 10; i++) {
         const end = addDays(start, patchLength);
         const p1End = addDays(start, phase2Offset);
+        const version = `${major}.${minor}`;
 
         const patch: Patch = {
             id: nanoid(),
-            version: `${major}.${minor}`,
+            version,
             startDate: format(start, "yyyy-MM-dd"),
             endDate: format(end, "yyyy-MM-dd"),
-            patchType: 'standard',
+            patchType: "standard",
+            modifiers: knownModifiersForVersion(version),
             phases: [
                 {
                     id: nanoid(),
@@ -169,6 +186,7 @@ interface PlannerStore {
         data: Partial<Omit<BannerPhase, "id">>,
     ) => void;
     setPatchType: (patchId: string, type: PatchType) => void;
+    togglePatchModifier: (patchId: string, modifier: PatchModifier) => void;
     setTarget: (t: Target | null) => void;
     addScenario: () => void;
     updateScenario: (id: string, data: Partial<Omit<Scenario, "id">>) => void;
@@ -235,7 +253,8 @@ export const usePlannerStore = create<PlannerStore>()(
                     version,
                     startDate: format(newStart, "yyyy-MM-dd"),
                     endDate: format(end, "yyyy-MM-dd"),
-                    patchType: 'standard',
+                    patchType: "standard",
+                    modifiers: knownModifiersForVersion(version),
                     phases: [
                         {
                             id: nanoid(),
@@ -287,6 +306,20 @@ export const usePlannerStore = create<PlannerStore>()(
                     patches: s.patches.map((p) =>
                         p.id === patchId ? { ...p, patchType: type } : p,
                     ),
+                })),
+
+            togglePatchModifier: (patchId, modifier) =>
+                set((s) => ({
+                    patches: s.patches.map((p) => {
+                        if (p.id !== patchId) return p;
+                        const modifiers = p.modifiers ?? [];
+                        return {
+                            ...p,
+                            modifiers: modifiers.includes(modifier)
+                                ? modifiers.filter((m) => m !== modifier)
+                                : [...modifiers, modifier],
+                        };
+                    }),
                 })),
 
             setTarget: (t) => set({ target: t }),
@@ -425,10 +458,66 @@ export const usePlannerStore = create<PlannerStore>()(
         }),
         {
             name: "genshin-wish-projection",
-            version: 11,
+            version: 12,
             migrate: (persisted: any) => {
                 if (!persisted) return persisted;
                 const oldNav = persisted.nav;
+                const oldRecurring = persisted.config?.recurring ?? {};
+
+                const oldPatchRewards = oldRecurring.patchTypeRewards ?? {};
+                const oldPatchTotals = oldRecurring.patchTypeTotalWishes ?? {};
+
+                const migratedRecurring: RecurringConfig = {
+                    ...defaultRecurring,
+                    ...oldRecurring,
+                    patchTypeRewards: {
+                        standard: oldPatchRewards.standard ?? defaultRecurring.patchTypeRewards.standard,
+                        "sub-area": oldPatchRewards["sub-area"] ?? defaultRecurring.patchTypeRewards["sub-area"],
+                        "new-region": oldPatchRewards["new-region"] === 12140
+                            ? defaultRecurring.patchTypeRewards["new-region"]
+                            : oldPatchRewards["new-region"] ?? defaultRecurring.patchTypeRewards["new-region"],
+                    },
+                    patchModifierRewards: {
+                        anniversary: oldRecurring.patchModifierRewards?.anniversary
+                            ?? defaultRecurring.patchModifierRewards.anniversary,
+                        "lantern-rite": oldRecurring.patchModifierRewards?.["lantern-rite"]
+                            ?? (oldPatchRewards["lantern-rite"] != null
+                                ? Math.max(0, oldPatchRewards["lantern-rite"] - (oldPatchRewards.standard ?? 3052))
+                                : defaultRecurring.patchModifierRewards["lantern-rite"]),
+                    },
+                    patchTypeTotalWishes: {
+                        standard: oldPatchTotals.standard ?? defaultRecurring.patchTypeTotalWishes.standard,
+                        "sub-area": oldPatchTotals["sub-area"] ?? defaultRecurring.patchTypeTotalWishes["sub-area"],
+                        "new-region": oldPatchTotals["new-region"] === 128
+                            ? defaultRecurring.patchTypeTotalWishes["new-region"]
+                            : oldPatchTotals["new-region"] ?? defaultRecurring.patchTypeTotalWishes["new-region"],
+                    },
+                    patchModifierTotalWishes: {
+                        anniversary: oldRecurring.patchModifierTotalWishes?.anniversary
+                            ?? defaultRecurring.patchModifierTotalWishes.anniversary,
+                        "lantern-rite": oldRecurring.patchModifierTotalWishes?.["lantern-rite"]
+                            ?? (oldPatchTotals["lantern-rite"] != null
+                                ? Math.max(0, oldPatchTotals["lantern-rite"] - (oldPatchTotals.standard ?? 67))
+                                : defaultRecurring.patchModifierTotalWishes["lantern-rite"]),
+                    },
+                };
+
+                const migratedPatches = (persisted.patches ?? []).map((p: any) => {
+                    const legacyLantern = p.patchType === "lantern-rite";
+                    const existingModifiers: PatchModifier[] = Array.isArray(p.modifiers)
+                        ? p.modifiers.filter((m: string) => m === "anniversary" || m === "lantern-rite")
+                        : [];
+                    const modifiers = [...existingModifiers];
+                    if (legacyLantern && !modifiers.includes("lantern-rite")) modifiers.push("lantern-rite");
+                    if (p.version === "7.1" && !modifiers.includes("anniversary")) modifiers.push("anniversary");
+
+                    return {
+                        ...p,
+                        patchType: legacyLantern ? "standard" : p.patchType,
+                        modifiers,
+                    };
+                });
+
                 return {
                     ...persisted,
                     nav:
@@ -437,13 +526,11 @@ export const usePlannerStore = create<PlannerStore>()(
                             : oldNav === "scenarios"
                             ? "roadmap"
                             : oldNav,
+                    patches: migratedPatches,
                     config: {
                         ...defaultConfig,
                         ...persisted.config,
-                        recurring: {
-                            ...defaultRecurring,
-                            ...persisted.config?.recurring,
-                        },
+                        recurring: migratedRecurring,
                     },
                 };
             },
