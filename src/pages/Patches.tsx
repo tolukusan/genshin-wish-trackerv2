@@ -1,27 +1,37 @@
 import { usePlannerStore } from "@/store/usePlannerStore";
 import { format, parseISO } from "date-fns";
-import type { PatchType } from "@/types";
+import type { PatchModifier, PatchType } from "@/types";
 
 const PATCH_TYPE_LABELS: Record<PatchType, string> = {
     standard: "Standard",
     "sub-area": "Sub-area",
-    "lantern-rite": "Lantern Rite",
     "new-region": "New Region",
 };
 
+const PATCH_MODIFIER_LABELS: Record<PatchModifier, string> = {
+    anniversary: "Anniversary",
+    "lantern-rite": "Lantern Rite",
+};
+
 export function Patches() {
-    const { patches, addPatch, deletePatch, setPatchType } = usePlannerStore();
+    const {
+        patches,
+        addPatch,
+        deletePatch,
+        setPatchType,
+        togglePatchModifier,
+    } = usePlannerStore();
 
     return (
-        <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-fade-in">
+        <div className="max-w-4xl mx-auto flex flex-col gap-6 animate-fade-in">
             <div className="flex items-start justify-between">
                 <div>
                     <h1 className="text-xl font-semibold text-slate-900">
                         Patches
                     </h1>
                     <p className="text-sm text-slate-500 mt-0.5">
-                        Dates are auto-scheduled from the anchor in Settings. Pick each patch's
-                        type here — reward estimates and labels live in Settings.
+                        Choose the base content level, then add any special reward bonuses that overlap.
+                        Estimates and bonus values live in Settings.
                     </p>
                 </div>
                 <button className="btn-primary" onClick={addPatch}>
@@ -35,23 +45,24 @@ export function Patches() {
                         <tr className="border-b border-slate-300/50 text-left">
                             <th className="p-3 text-xs font-medium text-slate-500">Version</th>
                             <th className="p-3 text-xs font-medium text-slate-500">Window</th>
-                            <th className="p-3 text-xs font-medium text-slate-500">Patch Type</th>
+                            <th className="p-3 text-xs font-medium text-slate-500">Base Content</th>
+                            <th className="p-3 text-xs font-medium text-slate-500">Special Bonuses</th>
                             <th className="p-3"></th>
                         </tr>
                     </thead>
                     <tbody>
                         {patches.map((patch) => (
-                            <tr key={patch.id} className="border-b border-slate-200/50 last:border-0">
+                            <tr key={patch.id} className="border-b border-slate-200/50 last:border-0 align-top">
                                 <td className="p-3 text-accent-purple font-semibold">
                                     v{patch.version}
                                 </td>
-                                <td className="p-3 text-slate-700">
+                                <td className="p-3 text-slate-700 whitespace-nowrap">
                                     {format(parseISO(patch.startDate), "MMM d")} –{" "}
                                     {format(parseISO(patch.endDate), "MMM d, yyyy")}
                                 </td>
                                 <td className="p-3">
                                     <select
-                                        className="input-base text-xs"
+                                        className="input-base text-xs min-w-32"
                                         value={patch.patchType}
                                         onChange={(e) =>
                                             setPatchType(patch.id, e.target.value as PatchType)
@@ -63,6 +74,31 @@ export function Patches() {
                                             </option>
                                         ))}
                                     </select>
+                                </td>
+                                <td className="p-3">
+                                    <div className="flex flex-wrap gap-2">
+                                        {(Object.keys(PATCH_MODIFIER_LABELS) as PatchModifier[]).map((modifier) => {
+                                            const checked = (patch.modifiers ?? []).includes(modifier);
+                                            return (
+                                                <label
+                                                    key={modifier}
+                                                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer transition-colors ${
+                                                        checked
+                                                            ? "border-violet-300 bg-violet-50 text-violet-700"
+                                                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                                    }`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        className="accent-violet-600"
+                                                        checked={checked}
+                                                        onChange={() => togglePatchModifier(patch.id, modifier)}
+                                                    />
+                                                    {PATCH_MODIFIER_LABELS[modifier]}
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
                                 </td>
                                 <td className="p-3 text-right">
                                     <button
