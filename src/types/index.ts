@@ -45,7 +45,7 @@ export interface RecurringConfig {
   primoPerFate: number           // always 160
   starglitterPerFate: number     // starglitter needed per fate
   maintenancePrimos: number      // patch maintenance reward, applied to every patch
-  livestreamPrimos: number       // livestream code reward, applied to every patch
+  livestreamPrimos: number      // livestream code reward, applied to every patch
   patchTypeRewards: Record<PatchType, number> // base EVENT-ONLY reward by content type (primos), used by Next Character
   patchModifierRewards: Record<PatchModifier, number> // additive EVENT-ONLY bonus by special patch modifier (primos)
   patchTypeTotalWishes: Record<PatchType, number> // base ALL-INCLUSIVE wishes by content type, used by Roadmap
@@ -177,15 +177,9 @@ export interface ChainStopResult {
   phaseEndDate: string
   daysToStop: number
   daysToEnd: number
-  pullsToSpend: number      // user-set planned spend cap
-  guaranteed: boolean       // featured 5-star guarantee state before this stop, using hard-pity simulation
-  guaranteedRealistic: boolean // same state using the soft-pity simulation
-  pityBefore: number        // character-banner pity entering this stop in hard-pity simulation
-  pityBeforeRealistic: number // character-banner pity entering this stop in soft-pity simulation
-  pullsToNextFiveStar: number // worst-case pulls from this stop to the next 5-star
-  pullsToGuaranteeFeatured: number // worst-case pulls from this stop to guarantee the featured character
-  pullsToSoftPity: number
-  pullsToGuaranteeFeaturedSoft: number
+  pullsToSpend: number      // user-set; pity carry applied internally to determine canAfford threshold
+  guaranteed: boolean       // worst-case guarantee status: assumes every 5-star costs hard pity
+  guaranteedRealistic: boolean // same, but assumes every 5-star lands at the soft/hard pity midpoint
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
   actualSpend: number       // pullsToSpend if affordable, else 0 (roll-over)
