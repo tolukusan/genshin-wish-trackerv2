@@ -3,20 +3,112 @@ import { runChain } from '@/engine/projectionEngine'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { NumberInput } from '@/components/ui/NumberInput'
 import { format, parseISO } from 'date-fns'
+import type { ChainStopResult } from '@/types'
 
-// Same three-tier language as Next Character: safe = your planned spend goes through,
-// partial = not your full plan, but still enough for *a* character, none = rolls over.
 type Tier = 'safe' | 'partial' | 'none'
-function affordTier(canAfford: boolean, availableAtEnd: number, hardPity: number): Tier {
-  if (canAfford) return 'safe'
-  if (availableAtEnd >= hardPity) return 'partial'
-  return 'none'
+
+interface PityState {
+  pity: number
+  guaranteed: boolean
 }
-const tierColor: Record<Tier, string> = { safe: '#059669', partial: '#b45309', none: '#dc2626' }
-const tierLabel: Record<Tier, string> = {
-  safe: 'Spending as planned ✓',
-  partial: 'Enough for a character, not full spend',
-  none: 'Rolls over — not enough yet',
+
+function getPityStates(
+  results: ChainStopResult[],
+  startingPity: number,
+  startingGuaranteed: boolean,
+  hardPity: number,
+): PityState[] {
+  let pity = startingPity
+  let guaranteed = startingGuaranteed
+
+  return results.map((result) => {
+    const before = { pity, guaranteed }
+
+    if (result.actualSpend > 0) {
+      let total = pity + result.actualSpend
+      while (total >= hardPity) {
+        total -= hardPity
+        guaranteed = !guaranteed
+      }
+      pity = total
+    }
+
+    return before
+  })
+}
+
+function outcomeFor(
+  result: ChainStopResult | undefined,
+  state: PityState,
+  hardPity: number,
+): {
+  tier: Tier
+  title: string
+  detail: string
+  pullsToNextFiveStar: number
+  pullsToGuaranteeFeatured: number
+} {
+  const pullsToNextFiveStar = Math.max(0, hardPity - state.pity)
+  const pullsToGuaranteeFeatured = state.guaranteed
+    ? pullsToNextFiveStar
+    : pullsToNextFiveStar + hardPity
+
+  if (!result) {
+    return {
+      tier: 'none',
+      title: 'Select a banner',
+      detail: 'Choose a banner to see the projection.',
+      pullsToNextFiveStar,
+      pullsToGuaranteeFeatured,
+    }
+  }
+
+  if (!result.canAfford) {
+    const short = Math.max(0, result.pullsToSpend - result.availableAtEnd)
+    return {
+      tier: 'none',
+      title: `Plan is short by ${short} pull${short === 1 ? '' : 's'}`,
+      detail: `The planner spends 0 here and carries all ${result.availableAtEnd} pulls forward.`,
+      pullsToNextFiveStar,
+      pullsToGuaranteeFeatured,
+    }
+  }
+
+  if (result.actualSpend >= pullsToGuaranteeFeatured) {
+    return {
+      tier: 'safe',
+      title: 'Featured character guaranteed ✓',
+      detail: `Your ${result.actualSpend}-pull plan covers the worst-case guarantee.`,
+      pullsToNextFiveStar,
+      pullsToGuaranteeFeatured,
+    }
+  }
+
+  if (result.actualSpend >= pullsToNextFiveStar) {
+    return {
+      tier: 'partial',
+      title: state.guaranteed ? 'Featured character guaranteed ✓' : 'You can reach a 5★, but it is 50/50',
+      detail: state.guaranteed
+        ? `Your plan reaches the next 5★ while your featured guarantee is active.`
+        : `Your plan reaches one 5★, but does not cover a lost 50/50 plus the guaranteed 5★ after it.`,
+      pullsToNextFiveStar,
+      pullsToGuaranteeFeatured,
+    }
+  }
+
+  return {
+    tier: 'partial',
+    title: 'Plan does not guarantee a 5★',
+    detail: `In the worst case you need ${pullsToNextFiveStar} pulls from this pity, but your plan spends ${result.actualSpend}.`,
+    pullsToNextFiveStar,
+    pullsToGuaranteeFeatured,
+  }
+}
+
+const tierColor: Record<Tier, string> = {
+  safe: '#059669',
+  partial: '#b45309',
+  none: '#dc2626',
 }
 
 export function Roadmap() {
@@ -24,22 +116,27 @@ export function Roadmap() {
     usePlannerStore()
 
   const results = chain.length > 0 ? runChain({ player, config, patches, chain }) : []
+  const pityStates = getPityStates(
+    results,
+    player.characterBannerPity,
+    player.characterBannerGuaranteed,
+    config.hardPityCharacter,
+  )
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-fade-in">
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Roadmap</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Plan a sequence of future banners using per-patch wish estimates. Separate from Next Character —
-          nothing spent here affects that projection.
+          Plan future banners in order. Each stop shows what you will have, what you need for the featured character,
+          what your spend plan does, and what carries forward.
         </p>
       </div>
 
-      {/* Builder */}
       <section className="card p-5 flex flex-col gap-4">
         <SectionHeader
           title="Pull Chain"
-          sub="Banners in order — resources carry forward after each spend"
+          sub="If a spend cap cannot be reached by banner end, that stop is skipped and the pulls carry forward."
           action={
             <button className="btn-primary text-xs px-3 py-1.5" onClick={addChainStop}>
               + Add Stop
@@ -55,11 +152,15 @@ export function Roadmap() {
 
         {chain.map((stop, idx) => {
           const result = results[idx]
-          const canAfford = result?.canAfford ?? false
           const availableAtStart = result?.availableAtStart ?? 0
           const availableAtEnd = result?.availableAtEnd ?? 0
-          const remainingAfter = result?.remainingAfter ?? 0
-          const tier = affordTier(canAfford, availableAtEnd, config.hardPityCharacter)
+          const remainingAfter = result?.remainingAfter ?? availableAtEnd
+          const state = pityStates[idx] ?? {
+            pity: player.characterBannerPity,
+            guaranteed: player.characterBannerGuaranteed,
+          }
+          const outcome = outcomeFor(result, state, config.hardPityCharacter)
+          const shortBy = result ? Math.max(0, result.pullsToSpend - result.availableAtEnd) : 0
 
           return (
             <div
@@ -67,12 +168,16 @@ export function Roadmap() {
               style={{
                 borderRadius: '0.75rem',
                 border: '1px solid',
-                borderColor: tier === 'safe' ? 'rgba(16,185,129,0.3)' : tier === 'partial' ? 'rgba(240,180,41,0.3)' : 'rgba(239,68,68,0.25)',
+                borderColor:
+                  outcome.tier === 'safe'
+                    ? 'rgba(16,185,129,0.3)'
+                    : outcome.tier === 'partial'
+                      ? 'rgba(240,180,41,0.3)'
+                      : 'rgba(239,68,68,0.25)',
                 backgroundColor: 'rgba(241,245,249,0.7)',
                 padding: '1rem',
               }}
             >
-              {/* Stop header */}
               <div className="flex items-center gap-2 mb-3">
                 <span
                   style={{
@@ -85,10 +190,20 @@ export function Roadmap() {
                     fontSize: '0.7rem',
                     fontWeight: 700,
                     flexShrink: 0,
-                    backgroundColor: tier === 'safe' ? 'rgba(16,185,129,0.2)' : tier === 'partial' ? 'rgba(240,180,41,0.2)' : 'rgba(239,68,68,0.15)',
-                    color: tierColor[tier],
+                    backgroundColor:
+                      outcome.tier === 'safe'
+                        ? 'rgba(16,185,129,0.2)'
+                        : outcome.tier === 'partial'
+                          ? 'rgba(240,180,41,0.2)'
+                          : 'rgba(239,68,68,0.15)',
+                    color: tierColor[outcome.tier],
                     border: '1px solid',
-                    borderColor: tier === 'safe' ? 'rgba(16,185,129,0.4)' : tier === 'partial' ? 'rgba(240,180,41,0.4)' : 'rgba(239,68,68,0.3)',
+                    borderColor:
+                      outcome.tier === 'safe'
+                        ? 'rgba(16,185,129,0.4)'
+                        : outcome.tier === 'partial'
+                          ? 'rgba(240,180,41,0.4)'
+                          : 'rgba(239,68,68,0.3)',
                   }}
                 >
                   {idx + 1}
@@ -146,10 +261,8 @@ export function Roadmap() {
                 </div>
               </div>
 
-              {/* Config row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {/* Patch select */}
-                <div className="flex flex-col gap-1 sm:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
                   <label className="label">Banner</label>
                   <select
                     className="input-base"
@@ -173,80 +286,119 @@ export function Roadmap() {
                           {ph2.featuredCharacters[0] ? ` — ${ph2.featuredCharacters[0]}` : ''}
                           {' · '}{format(parseISO(ph2.startDate), 'MMM d')}
                         </option>
-                      ))
+                      )),
                     )}
                   </select>
                 </div>
 
-                {/* Pulls to spend (editable) */}
                 <div className="flex flex-col gap-1">
                   <NumberInput
-                    label="Pulls to Spend"
+                    label="Planned Spend Cap"
                     value={stop.pullsToSpend}
                     min={1}
                     max={180}
                     onChange={(v) => updateChainStop(stop.id, { pullsToSpend: v })}
                   />
                   <p className="text-xs text-slate-500">
-                    {result
-                      ? result.guaranteed ? '90 = guaranteed' : '90 = 50/50 · 180 = guarantee'
-                      : '90 · 180 for guarantee on 50/50'}
+                    The planner spends this amount only if you have all of it by banner end.
                   </p>
                 </div>
+              </div>
 
-                {/* Result */}
-                <div className="flex flex-col gap-1">
-                  <span className="label">Pulls Available</span>
-                  <div className="flex flex-col gap-0.5 pt-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">At start</span>
-                      <span className="text-slate-800 font-medium">{availableAtStart}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">At end</span>
-                      <span className="text-slate-800 font-medium">{availableAtEnd}</span>
-                    </div>
-                    <div className="flex justify-between text-xs mt-0.5">
-                      <span className="text-slate-500">Status</span>
-                      <span style={{ color: tierColor[tier], fontWeight: 600 }}>
-                        {tierLabel[tier]}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Remaining</span>
-                      <span style={{ color: '#059669', fontWeight: 500 }}>
-                        +{remainingAfter}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-xs mt-0.5">
-                      <span className="text-slate-500">Worst case</span>
-                      <span style={{ color: result?.guaranteed ? '#059669' : '#64748b', fontSize: '0.75rem' }}>
-                        {result?.guaranteed ? 'Guaranteed' : '50/50'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Soft pity</span>
-                      <span style={{ color: result?.guaranteedRealistic ? '#059669' : '#64748b', fontSize: '0.75rem' }}>
-                        {result?.guaranteedRealistic ? 'Guaranteed' : '50/50'}
-                      </span>
-                    </div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
+                  <div className="label mb-2">You Will Have</div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">Banner start</span>
+                    <span className="text-slate-900 font-semibold">{availableAtStart} pulls</span>
+                  </div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">Banner end</span>
+                    <span className="text-slate-900 font-semibold">{availableAtEnd} pulls</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Entering banner</span>
+                    <span className="text-slate-700 font-medium">
+                      {state.pity} pity · {state.guaranteed ? 'Guaranteed' : '50/50'}
+                    </span>
                   </div>
                 </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
+                  <div className="label mb-2">What You Need</div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">Next 5★ worst case</span>
+                    <span className="text-slate-900 font-semibold">{outcome.pullsToNextFiveStar}</span>
+                  </div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">Featured guarantee</span>
+                    <span className="text-slate-900 font-semibold">{outcome.pullsToGuaranteeFeatured}</span>
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {availableAtEnd >= outcome.pullsToGuaranteeFeatured
+                      ? 'Your total resources can guarantee the featured character.'
+                      : `Your resources are ${outcome.pullsToGuaranteeFeatured - availableAtEnd} short of a worst-case featured guarantee.`}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
+                  <div className="label mb-2">Your Plan</div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">Spend cap</span>
+                    <span className="text-slate-900 font-semibold">{stop.pullsToSpend}</span>
+                  </div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">Planner spends</span>
+                    <span className="text-slate-900 font-semibold">{result?.actualSpend ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Carries forward</span>
+                    <span className="font-semibold" style={{ color: '#059669' }}>{remainingAfter}</span>
+                  </div>
+                  {shortBy > 0 && (
+                    <div className="text-xs mt-1" style={{ color: '#dc2626' }}>
+                      Short by {shortBy}; this stop is skipped.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div
+                className="mt-3 rounded-lg px-3 py-2.5"
+                style={{
+                  backgroundColor:
+                    outcome.tier === 'safe'
+                      ? 'rgba(16,185,129,0.08)'
+                      : outcome.tier === 'partial'
+                        ? 'rgba(245,158,11,0.08)'
+                        : 'rgba(239,68,68,0.07)',
+                  border: '1px solid',
+                  borderColor:
+                    outcome.tier === 'safe'
+                      ? 'rgba(16,185,129,0.22)'
+                      : outcome.tier === 'partial'
+                        ? 'rgba(245,158,11,0.22)'
+                        : 'rgba(239,68,68,0.18)',
+                }}
+              >
+                <div className="text-sm font-semibold" style={{ color: tierColor[outcome.tier] }}>
+                  {outcome.title}
+                </div>
+                <div className="text-xs text-slate-600 mt-0.5">{outcome.detail}</div>
               </div>
             </div>
           )
         })}
       </section>
 
-      {/* Summary table */}
       {results.length > 0 && (
         <section className="card p-5">
-          <SectionHeader title="Chain Summary" sub="Cumulative pull flow across all stops" />
-          <div className="overflow-x-auto">
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+          <SectionHeader title="Chain Summary" sub="What each banner does to your pull plan" />
+          <div className="overflow-x-auto overscroll-x-contain">
+            <table style={{ minWidth: '760px', width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(203,213,225,0.7)' }}>
-                  {['#', 'Banner', 'Window', '@Start', '@End', 'Spend', 'Remaining', 'Worst case', 'Soft pity', 'Status'].map((h) => (
+                  {['#', 'Banner', 'By End', 'Pity / State', 'Need to Guarantee', 'Plan', 'Actually Spent', 'Carry', 'Outcome'].map((h) => (
                     <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>
                       {h}
                     </th>
@@ -255,36 +407,24 @@ export function Roadmap() {
               </thead>
               <tbody>
                 {results.map((r, i) => {
-                  const tier = affordTier(r.canAfford, r.availableAtEnd, config.hardPityCharacter)
+                  const state = pityStates[i] ?? { pity: player.characterBannerPity, guaranteed: player.characterBannerGuaranteed }
+                  const outcome = outcomeFor(r, state, config.hardPityCharacter)
                   return (
-                    <tr
-                      key={r.stop.id}
-                      style={{ borderBottom: '1px solid rgba(226,232,240,0.6)' }}
-                    >
+                    <tr key={r.stop.id} style={{ borderBottom: '1px solid rgba(226,232,240,0.6)' }}>
                       <td style={{ padding: '0.5rem 0.75rem', color: '#64748b' }}>{i + 1}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: '#334155' }}>
-                        v{r.patchVersion} P{r.stop.phase}
-                        {r.stop.label ? ` · ${r.stop.label}` : ''}
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#334155', whiteSpace: 'nowrap' }}>
+                        v{r.patchVersion} P{r.stop.phase}{r.stop.label ? ` · ${r.stop.label}` : ''}
                       </td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#1e293b', fontWeight: 600 }}>{r.availableAtEnd}</td>
                       <td style={{ padding: '0.5rem 0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-                        {format(parseISO(r.phaseDate), 'MMM d')}–{format(parseISO(r.phaseEndDate), 'MMM d')}
+                        {state.pity} · {state.guaranteed ? 'Guaranteed' : '50/50'}
                       </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: '#1e293b', fontWeight: 600 }}>{r.availableAtStart}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: '#6d28d9', fontWeight: 600 }}>{r.availableAtEnd}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: tierColor[tier] }}>
-                        {r.canAfford ? r.pullsToSpend : `skip (${r.pullsToSpend})`}
-                      </td>
-                      <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: r.remainingAfter >= 0 ? '#059669' : '#dc2626' }}>
-                        {r.remainingAfter >= 0 ? '+' : ''}{r.remainingAfter}
-                      </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteed ? '#059669' : '#64748b', fontSize: '0.75rem' }}>
-                        {r.guaranteed ? 'Guaranteed' : '50/50'}
-                      </td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: r.guaranteedRealistic ? '#059669' : '#64748b', fontSize: '0.75rem' }}>
-                        {r.guaranteedRealistic ? 'Guaranteed' : '50/50'}
-                      </td>
-                      <td style={{ padding: '0.5rem 0.75rem', fontWeight: 700, color: tierColor[tier] }}>
-                        {tier === 'safe' ? '✓' : tier === 'partial' ? '~' : '✗'}
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#334155', fontWeight: 600 }}>{outcome.pullsToGuaranteeFeatured}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#334155' }}>{r.pullsToSpend}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: r.actualSpend > 0 ? '#059669' : '#dc2626', fontWeight: 600 }}>{r.actualSpend}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: '#059669', fontWeight: 600 }}>{r.remainingAfter}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: tierColor[outcome.tier], fontWeight: 600, minWidth: '180px' }}>
+                        {outcome.title}
                       </td>
                     </tr>
                   )
