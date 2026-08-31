@@ -39,8 +39,8 @@ export function Patches() {
                 </button>
             </div>
 
-            <div className="card overflow-hidden">
-                <table className="w-full text-sm">
+            <div className="card overflow-x-auto overscroll-x-contain">
+                <table className="w-full min-w-[760px] text-sm">
                     <thead>
                         <tr className="border-b border-slate-300/50 text-left">
                             <th className="p-3 text-xs font-medium text-slate-500">Version</th>
