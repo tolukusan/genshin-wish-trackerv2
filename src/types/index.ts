@@ -177,9 +177,15 @@ export interface ChainStopResult {
   phaseEndDate: string
   daysToStop: number
   daysToEnd: number
-  pullsToSpend: number      // user-set; pity carry applied internally to determine canAfford threshold
-  guaranteed: boolean       // worst-case guarantee status: assumes every 5-star costs hard pity
-  guaranteedRealistic: boolean // same, but assumes every 5-star lands at the soft/hard pity midpoint
+  pullsToSpend: number      // user-set planned spend cap
+  guaranteed: boolean       // featured 5-star guarantee state before this stop, using hard-pity simulation
+  guaranteedRealistic: boolean // same state using the soft-pity simulation
+  pityBefore: number        // character-banner pity entering this stop in hard-pity simulation
+  pityBeforeRealistic: number // character-banner pity entering this stop in soft-pity simulation
+  pullsToNextFiveStar: number // worst-case pulls from this stop to the next 5-star
+  pullsToGuaranteeFeatured: number // worst-case pulls from this stop to guarantee the featured character
+  pullsToSoftPity: number
+  pullsToGuaranteeFeaturedSoft: number
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
   actualSpend: number       // pullsToSpend if affordable, else 0 (roll-over)
