@@ -106,12 +106,6 @@ function knownModifiersForVersion(version: string): PatchModifier[] {
     return [];
 }
 
-function previousVersion(version: string): string | null {
-    const [major, minor] = version.split(".").map(Number);
-    if (!Number.isInteger(major) || !Number.isInteger(minor) || major < 1 || minor < 0) return null;
-    return minor === 0 ? `${major - 1}.7` : `${major}.${minor - 1}`;
-}
-
 function createPatch(version: string, start: Date, patchLength: number, phase2Offset: number): Patch {
     const end = addDays(start, patchLength);
     const p1End = addDays(start, phase2Offset);
@@ -210,7 +204,7 @@ interface PlannerStore {
     updateRecurring: (patch: Partial<RecurringConfig>) => void;
     resetConfig: () => void;
     addPatch: () => void;
-    insertPatchBefore: (id: string) => void;
+    addPatchAt: (version: string, startDate: string) => string | null;
     updatePatch: (
         id: string,
         data: Partial<Omit<Patch, "id" | "phases">>,
@@ -311,28 +305,28 @@ export const usePlannerStore = create<PlannerStore>()(
                 set({ patches: [...patches, newPatch] });
             },
 
-            insertPatchBefore: (id) => {
+            addPatchAt: (rawVersion, startDate) => {
                 const { patches, config } = get();
-                const targetIndex = patches.findIndex((patch) => patch.id === id);
-                if (targetIndex < 0) return;
+                const version = rawVersion.trim().replace(/^v/i, "");
+                if (!/^\d+\.\d+$/.test(version)) return "Enter a version such as 9.2.";
+                if (patches.some((patch) => patch.version === version)) return `v${version} already exists.`;
 
-                const target = patches[targetIndex];
-                const version = previousVersion(target.version);
-                if (!version || patches.some((patch) => patch.version === version)) return;
-
+                const start = parseISO(startDate);
+                if (Number.isNaN(start.getTime())) return "Choose a valid start date.";
                 const r = config.recurring;
-                const start = addDays(parseISO(target.startDate), -r.patchLengthDays);
-                const previous = patches[targetIndex - 1];
-                if (previous && parseISO(previous.endDate) > start) return;
-
                 const restored = createPatch(version, start, r.patchLengthDays, r.phase2OffsetDays);
+                const restoredEnd = parseISO(restored.endDate);
+                const overlaps = patches.some((patch) =>
+                    start < parseISO(patch.endDate) && restoredEnd > parseISO(patch.startDate),
+                );
+                if (overlaps) return "That patch window overlaps an existing patch.";
+
                 set({
-                    patches: [
-                        ...patches.slice(0, targetIndex),
-                        restored,
-                        ...patches.slice(targetIndex),
-                    ],
+                    patches: [...patches, restored].sort(
+                        (a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime(),
+                    ),
                 });
+                return null;
             },
 
             updatePatch: (id, data) =>

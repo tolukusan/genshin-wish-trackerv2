@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { usePlannerStore } from "@/store/usePlannerStore";
-import { addDays, format, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { PatchModifier, PatchType } from "@/types";
 
 const PATCH_TYPE_LABELS: Record<PatchType, string> = {
@@ -14,11 +15,14 @@ const PATCH_MODIFIER_LABELS: Record<PatchModifier, string> = {
 };
 
 export function Patches() {
+    const [showMissingForm, setShowMissingForm] = useState(false);
+    const [missingVersion, setMissingVersion] = useState("");
+    const [missingStartDate, setMissingStartDate] = useState("");
+    const [missingError, setMissingError] = useState("");
     const {
         patches,
-        config,
         addPatch,
-        insertPatchBefore,
+        addPatchAt,
         deletePatch,
         setPatchType,
         togglePatchModifier,
@@ -36,10 +40,61 @@ export function Patches() {
                         Estimates and bonus values live in Settings.
                     </p>
                 </div>
-                <button className="btn-primary" onClick={addPatch}>
-                    + Add Patch
-                </button>
+                <div className="flex flex-wrap justify-end gap-2">
+                    <button className="btn-secondary" onClick={() => setShowMissingForm((shown) => !shown)}>
+                        + Add Missing Patch
+                    </button>
+                    <button className="btn-primary" onClick={addPatch}>
+                        + Add Next Patch
+                    </button>
+                </div>
             </div>
+
+            {showMissingForm && (
+                <section className="card p-4 flex flex-col gap-3">
+                    <div>
+                        <div className="text-sm font-semibold text-slate-900">Add a patch anywhere</div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            Enter the real version and start date. Phase and end dates use your configured patch lengths.
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                        <label className="flex flex-col gap-1">
+                            <span className="label">Version</span>
+                            <input
+                                className="input-base"
+                                value={missingVersion}
+                                placeholder="e.g. 9.2"
+                                onChange={(event) => setMissingVersion(event.target.value)}
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1">
+                            <span className="label">Start date</span>
+                            <input
+                                type="date"
+                                className="input-base"
+                                value={missingStartDate}
+                                onChange={(event) => setMissingStartDate(event.target.value)}
+                            />
+                        </label>
+                        <button
+                            className="btn-primary"
+                            onClick={() => {
+                                const error = addPatchAt(missingVersion, missingStartDate);
+                                setMissingError(error ?? "");
+                                if (!error) {
+                                    setMissingVersion("");
+                                    setMissingStartDate("");
+                                    setShowMissingForm(false);
+                                }
+                            }}
+                        >
+                            Add Patch
+                        </button>
+                    </div>
+                    {missingError && <p className="text-xs text-red-600">{missingError}</p>}
+                </section>
+            )}
 
             <div className="card overflow-x-auto overscroll-x-contain">
                 <table className="w-full min-w-[760px] text-sm">
@@ -53,30 +108,10 @@ export function Patches() {
                         </tr>
                     </thead>
                     <tbody>
-                        {patches.map((patch, index) => {
-                            const [major, minor] = patch.version.split(".").map(Number);
-                            const priorVersion = minor === 0 ? `${major - 1}.7` : `${major}.${minor - 1}`;
-                            const canInsertBefore = Number.isInteger(major)
-                                && Number.isInteger(minor)
-                                && !patches.some((candidate) => candidate.version === priorVersion)
-                                && (!patches[index - 1]
-                                    || parseISO(patches[index - 1].endDate) <= addDays(
-                                        parseISO(patch.startDate),
-                                        -config.recurring.patchLengthDays,
-                                    ));
-                            return (
+                        {patches.map((patch) => (
                             <tr key={patch.id} className="border-b border-slate-200/50 last:border-0 align-top">
                                 <td className="p-3 text-accent-purple font-semibold">
-                                    <div>v{patch.version}</div>
-                                    {canInsertBefore && (
-                                        <button
-                                            onClick={() => insertPatchBefore(patch.id)}
-                                            className="mt-1 text-[0.7rem] font-medium text-violet-600 hover:text-violet-800"
-                                            title={`Restore v${priorVersion} immediately before this patch`}
-                                        >
-                                            + Insert v{priorVersion} before
-                                        </button>
-                                    )}
+                                    v{patch.version}
                                 </td>
                                 <td className="p-3 text-slate-700 whitespace-nowrap">
                                     {format(parseISO(patch.startDate), "MMM d")} –{" "}
@@ -131,8 +166,7 @@ export function Patches() {
                                     </button>
                                 </td>
                             </tr>
-                            );
-                        })}
+                        ))}
                     </tbody>
                 </table>
                 {patches.length === 0 && (
