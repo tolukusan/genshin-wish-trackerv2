@@ -1,5 +1,5 @@
 import { usePlannerStore } from "@/store/usePlannerStore";
-import { format, parseISO } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 import type { PatchModifier, PatchType } from "@/types";
 
 const PATCH_TYPE_LABELS: Record<PatchType, string> = {
@@ -16,7 +16,9 @@ const PATCH_MODIFIER_LABELS: Record<PatchModifier, string> = {
 export function Patches() {
     const {
         patches,
+        config,
         addPatch,
+        insertPatchBefore,
         deletePatch,
         setPatchType,
         togglePatchModifier,
@@ -51,10 +53,30 @@ export function Patches() {
                         </tr>
                     </thead>
                     <tbody>
-                        {patches.map((patch) => (
+                        {patches.map((patch, index) => {
+                            const [major, minor] = patch.version.split(".").map(Number);
+                            const priorVersion = minor === 0 ? `${major - 1}.7` : `${major}.${minor - 1}`;
+                            const canInsertBefore = Number.isInteger(major)
+                                && Number.isInteger(minor)
+                                && !patches.some((candidate) => candidate.version === priorVersion)
+                                && (!patches[index - 1]
+                                    || parseISO(patches[index - 1].endDate) <= addDays(
+                                        parseISO(patch.startDate),
+                                        -config.recurring.patchLengthDays,
+                                    ));
+                            return (
                             <tr key={patch.id} className="border-b border-slate-200/50 last:border-0 align-top">
                                 <td className="p-3 text-accent-purple font-semibold">
-                                    v{patch.version}
+                                    <div>v{patch.version}</div>
+                                    {canInsertBefore && (
+                                        <button
+                                            onClick={() => insertPatchBefore(patch.id)}
+                                            className="mt-1 text-[0.7rem] font-medium text-violet-600 hover:text-violet-800"
+                                            title={`Restore v${priorVersion} immediately before this patch`}
+                                        >
+                                            + Insert v{priorVersion} before
+                                        </button>
+                                    )}
                                 </td>
                                 <td className="p-3 text-slate-700 whitespace-nowrap">
                                     {format(parseISO(patch.startDate), "MMM d")} –{" "}
@@ -109,7 +131,8 @@ export function Patches() {
                                     </button>
                                 </td>
                             </tr>
-                        ))}
+                            );
+                        })}
                     </tbody>
                 </table>
                 {patches.length === 0 && (

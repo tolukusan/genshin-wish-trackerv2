@@ -106,6 +106,41 @@ function knownModifiersForVersion(version: string): PatchModifier[] {
     return [];
 }
 
+function previousVersion(version: string): string | null {
+    const [major, minor] = version.split(".").map(Number);
+    if (!Number.isInteger(major) || !Number.isInteger(minor) || major < 1 || minor < 0) return null;
+    return minor === 0 ? `${major - 1}.7` : `${major}.${minor - 1}`;
+}
+
+function createPatch(version: string, start: Date, patchLength: number, phase2Offset: number): Patch {
+    const end = addDays(start, patchLength);
+    const p1End = addDays(start, phase2Offset);
+    return {
+        id: nanoid(),
+        version,
+        startDate: format(start, "yyyy-MM-dd"),
+        endDate: format(end, "yyyy-MM-dd"),
+        patchType: "standard",
+        modifiers: knownModifiersForVersion(version),
+        phases: [
+            {
+                id: nanoid(),
+                phase: 1,
+                startDate: format(start, "yyyy-MM-dd"),
+                endDate: format(p1End, "yyyy-MM-dd"),
+                featuredCharacters: [""],
+            },
+            {
+                id: nanoid(),
+                phase: 2,
+                startDate: format(p1End, "yyyy-MM-dd"),
+                endDate: format(end, "yyyy-MM-dd"),
+                featuredCharacters: [""],
+            },
+        ],
+    };
+}
+
 function buildSeedPatches(
     anchor: string,
     anchorVersion: string,
@@ -175,6 +210,7 @@ interface PlannerStore {
     updateRecurring: (patch: Partial<RecurringConfig>) => void;
     resetConfig: () => void;
     addPatch: () => void;
+    insertPatchBefore: (id: string) => void;
     updatePatch: (
         id: string,
         data: Partial<Omit<Patch, "id" | "phases">>,
@@ -273,6 +309,30 @@ export const usePlannerStore = create<PlannerStore>()(
                     ],
                 };
                 set({ patches: [...patches, newPatch] });
+            },
+
+            insertPatchBefore: (id) => {
+                const { patches, config } = get();
+                const targetIndex = patches.findIndex((patch) => patch.id === id);
+                if (targetIndex < 0) return;
+
+                const target = patches[targetIndex];
+                const version = previousVersion(target.version);
+                if (!version || patches.some((patch) => patch.version === version)) return;
+
+                const r = config.recurring;
+                const start = addDays(parseISO(target.startDate), -r.patchLengthDays);
+                const previous = patches[targetIndex - 1];
+                if (previous && parseISO(previous.endDate) > start) return;
+
+                const restored = createPatch(version, start, r.patchLengthDays, r.phase2OffsetDays);
+                set({
+                    patches: [
+                        ...patches.slice(0, targetIndex),
+                        restored,
+                        ...patches.slice(targetIndex),
+                    ],
+                });
             },
 
             updatePatch: (id, data) =>
