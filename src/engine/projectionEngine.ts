@@ -23,20 +23,22 @@ function getPatchRewardDrivers(patch: Patch): { baseType: PatchType; modifiers: 
   return { baseType, modifiers }
 }
 
-function getPatchEventPrimos(patch: Patch, config: ProjectionConfig): number {
+function getPatchPhaseEventPrimos(patch: Patch, phase: 1 | 2, config: ProjectionConfig): number {
   const r = config.recurring
   const { baseType, modifiers } = getPatchRewardDrivers(patch)
-  const base = r.patchTypeRewards[baseType] ?? 0
+  const baseHalf = (r.patchTypeRewards[baseType] ?? 0) / 2
+  if (phase === 2) return baseHalf
   const bonuses = modifiers.reduce((sum, modifier) => sum + (r.patchModifierRewards[modifier] ?? 0), 0)
-  return base + bonuses
+  return baseHalf + bonuses
 }
 
-function getPatchRoadmapWishes(patch: Patch, config: ProjectionConfig): number {
+function getPatchRoadmapPhaseWishes(patch: Patch, phase: 1 | 2, config: ProjectionConfig): number {
   const r = config.recurring
   const { baseType, modifiers } = getPatchRewardDrivers(patch)
-  const base = r.patchTypeTotalWishes[baseType] ?? 0
+  const baseHalf = (r.patchTypeTotalWishes[baseType] ?? 0) / 2
+  if (phase === 2) return baseHalf
   const bonuses = modifiers.reduce((sum, modifier) => sum + (r.patchModifierTotalWishes[modifier] ?? 0), 0)
-  return base + bonuses
+  return baseHalf + bonuses
 }
 
 // Count how many times a specific day-of-month falls in [from, to] (inclusive of both ends).
@@ -205,18 +207,17 @@ function computeSnapshot(
     push({ source: `Livestream Codes (${hits.length}×)`, primogems: primos, fates: 0 })
   }
 
-  // Base patch content + additive special bonuses, split 50/50 across phases.
+  // Base patch content is split 50/50; special bonuses arrive wholly in Phase 1.
   // Only applies to patches that haven't started yet; active patches use Data Entry instead.
   let patchTypePrimos = 0
   let patchTypeHits = 0
   for (const p of patches) {
     const pStart = parseISO(p.startDate)
     if (pStart <= today) continue
-    const half = getPatchEventPrimos(p, config) / 2
     for (const ph of p.phases) {
       const phStart = parseISO(ph.startDate)
       if (phStart > today && phStart <= cutoff) {
-        patchTypePrimos += half
+        patchTypePrimos += getPatchPhaseEventPrimos(p, ph.phase, config)
         patchTypeHits++
       }
     }
@@ -248,7 +249,7 @@ function computeSnapshot(
 }
 
 // Roadmap (long-term chain) snapshot — each future patch contributes its base
-// all-inclusive estimate plus any additive special bonuses, split across phases.
+// all-inclusive estimate split across phases, with special bonuses in Phase 1.
 // The current patch is excluded because the player tracks it directly via Data Entry.
 function computeRoadmapSnapshot(
   player: PlayerState,
@@ -256,6 +257,7 @@ function computeRoadmapSnapshot(
   patches: Patch[],
   cutoff: Date,
   today: Date,
+  includePhasesStartingAtCutoff = true,
 ): ForecastSnapshot {
   const r = config.recurring
   const daysToTarget = Math.max(0, differenceInDays(cutoff, today))
@@ -272,6 +274,71 @@ function computeRoadmapSnapshot(
 
   let gainedPrimos = 0
   let gainedFates = 0
+
+  // Bridge Data Entry to the first future patch. Generic active-patch event
+  // rewards stay excluded because claimed rewards cannot be inferred.
+  const firstFuturePatchStart = patches
+    .map((p) => parseISO(p.startDate))
+    .filter((date) => date > today)
+    .sort((a, b) => a.getTime() - b.getTime())[0]
+  const bridgeCutoff = firstFuturePatchStart && firstFuturePatchStart < cutoff
+    ? firstFuturePatchStart
+    : cutoff
+  const bridgeDays = Math.max(0, differenceInDays(bridgeCutoff, today))
+
+  if (config.commissionsIncluded) {
+    const primos = bridgeDays * r.dailyCommissions
+    gainedPrimos += primos
+    push({ source: 'Current-patch Daily Commissions', primogems: primos, fates: 0 })
+  }
+
+  const bridgeMonthlyOccurrences = (day: number) => {
+    let count = 0
+    for (let d = 0; d < bridgeDays; d++) {
+      if (addDays(today, d).getDate() === day) count++
+    }
+    return count
+  }
+  if (config.spiralAbyssEnabled) {
+    const primos = bridgeMonthlyOccurrences(16) * r.spiralAbyssMax
+    gainedPrimos += primos
+    push({ source: 'Current-patch Spiral Abyss', primogems: primos, fates: 0 })
+  }
+  if (config.imaginariumTheatreEnabled) {
+    const primos = bridgeMonthlyOccurrences(1) * r.imaginariumTheatreMax
+    gainedPrimos += primos
+    push({ source: 'Current-patch Imaginarium Theatre', primogems: primos, fates: 0 })
+  }
+  if (config.monthlyShopIncluded) {
+    const fates = bridgeMonthlyOccurrences(1) * r.monthlyShopIntertwined
+    gainedFates += fates
+    push({ source: 'Current-patch Monthly Shop', primogems: 0, fates })
+  }
+  if (config.stygianOnslaughtEnabled) {
+    const hits = patches.map((p) => addDays(parseISO(p.startDate), 7))
+      .filter((date) => date > today && date < bridgeCutoff).length
+    const primos = hits * r.stygianOnslaughtMax
+    gainedPrimos += primos
+    push({ source: 'Current-patch Stygian Onslaught', primogems: primos, fates: 0 })
+  }
+  if (config.characterTrialsEnabled) {
+    const phases = patches.flatMap((p) => p.phases).filter((phase) => {
+      const date = parseISO(phase.startDate)
+      return date > today && date < bridgeCutoff
+    }).length
+    const primos = phases * r.trialPrimosPerPhase
+    gainedPrimos += primos
+    push({ source: 'Current-patch Character Trials', primogems: primos, fates: 0 })
+  }
+  if (config.livestreamIncluded) {
+    const hits = patches.slice(1).filter((patch) => {
+      const date = addDays(parseISO(patch.startDate), -12)
+      return date > today && date < bridgeCutoff
+    }).length
+    const primos = hits * r.livestreamPrimos
+    gainedPrimos += primos
+    push({ source: 'Current-patch Livestream Codes', primogems: primos, fates: 0 })
+  }
 
   // Welkin Moon — only if actually active right now, capped to remaining days
   if (player.welkinActive) {
@@ -292,7 +359,7 @@ function computeRoadmapSnapshot(
       const ph2 = p.phases.find((ph) => ph.phase === 2)
       if (!ph2) continue
       const ph2Start = parseISO(ph2.startDate)
-      if (ph2Start > today && ph2Start <= cutoff) {
+      if (ph2Start > today && (ph2Start < cutoff || (includePhasesStartingAtCutoff && ph2Start <= cutoff))) {
         bpCount++
         if (player.battlePassMode === 'paid') {
           bpPrimos += r.battlePassPaidPrimos
@@ -317,11 +384,10 @@ function computeRoadmapSnapshot(
   for (const p of patches) {
     const pStart = parseISO(p.startDate)
     if (pStart <= today) continue
-    const half = getPatchRoadmapWishes(p, config) / 2
     for (const ph of p.phases) {
       const phStart = parseISO(ph.startDate)
-      if (phStart > today && phStart <= cutoff) {
-        wishEstimate += half
+      if (phStart > today && (phStart < cutoff || (includePhasesStartingAtCutoff && phStart <= cutoff))) {
+        wishEstimate += getPatchRoadmapPhaseWishes(p, ph.phase, config)
         wishHits++
       }
     }
@@ -349,6 +415,20 @@ function computeRoadmapSnapshot(
     totalPulls,
     breakdown,
   }
+}
+
+export function getRoadmapBridge(input: {
+  player: PlayerState
+  config: ProjectionConfig
+  patches: Patch[]
+  today?: Date
+}): ForecastSnapshot | null {
+  const today = input.today ?? new Date()
+  const firstFuturePatch = input.patches
+    .filter((patch) => parseISO(patch.startDate) > today)
+    .sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime())[0]
+  if (!firstFuturePatch) return null
+  return computeRoadmapSnapshot(input.player, input.config, input.patches, parseISO(firstFuturePatch.startDate), today, false)
 }
 
 export function runProjection(input: EngineInput): ForecastResult {
@@ -480,7 +560,7 @@ export function runChain(input: {
     const daysToStop = Math.max(0, differenceInDays(phaseDate, today))
     const daysToEnd = Math.max(0, differenceInDays(phaseEnd, today))
 
-    const snapStart = computeRoadmapSnapshot(player, config, patches, phaseDate, today)
+    const snapStart = computeRoadmapSnapshot(player, config, patches, phaseDate, today, false)
     const snapEnd = computeRoadmapSnapshot(player, config, patches, phaseEnd, today)
 
     const availableAtStart = snapStart.totalPulls - deficit
@@ -529,6 +609,7 @@ export function runChain(input: {
       guaranteed,
       guaranteedRealistic,
       availableAtStart,
+      rewardsDuringBanner: Math.max(0, availableAtEnd - availableAtStart),
       availableAtEnd,
       actualSpend,
       canAfford,

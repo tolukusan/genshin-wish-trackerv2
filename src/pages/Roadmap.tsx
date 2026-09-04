@@ -1,5 +1,5 @@
 import { usePlannerStore } from '@/store/usePlannerStore'
-import { runChain } from '@/engine/projectionEngine'
+import { getRoadmapBridge, runChain } from '@/engine/projectionEngine'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { NumberInput } from '@/components/ui/NumberInput'
 import { format, parseISO } from 'date-fns'
@@ -116,6 +116,11 @@ export function Roadmap() {
     usePlannerStore()
 
   const results = chain.length > 0 ? runChain({ player, config, patches, chain }) : []
+  const bridge = getRoadmapBridge({ player, config, patches })
+  const currentPulls = Math.floor((player.primogems + player.genesisCrystals) / config.recurring.primoPerFate)
+    + player.intertwinedFates
+    + Math.floor(player.starglitter / config.recurring.starglitterPerFate)
+  const bridgeRewards = bridge ? Math.max(0, bridge.totalPulls - currentPulls) : 0
   const pityStates = getPityStates(
     results,
     player.characterBannerPity,
@@ -132,6 +137,29 @@ export function Roadmap() {
           what your spend plan does, and what carries forward.
         </p>
       </div>
+
+      {bridge && (
+        <section className="card p-5 flex flex-col gap-3">
+          <SectionHeader
+            title="Before the Roadmap"
+            sub={`Predictable rewards before ${format(parseISO(bridge.cutoffDate), 'MMM d, yyyy')}; unclaimed current-patch event rewards are not estimated.`}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
+              <div className="label mb-1">Current resources</div>
+              <div className="text-lg font-semibold text-slate-900">{currentPulls} pulls</div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
+              <div className="label mb-1">Before next patch</div>
+              <div className="text-lg font-semibold text-amber-700">+{bridgeRewards} pulls</div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
+              <div className="label mb-1">Starting roadmap balance</div>
+              <div className="text-lg font-semibold text-emerald-700">{bridge.totalPulls} pulls</div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="card p-5 flex flex-col gap-4">
         <SectionHeader
@@ -153,6 +181,7 @@ export function Roadmap() {
         {chain.map((stop, idx) => {
           const result = results[idx]
           const availableAtStart = result?.availableAtStart ?? 0
+          const rewardsDuringBanner = result?.rewardsDuringBanner ?? 0
           const availableAtEnd = result?.availableAtEnd ?? 0
           const remainingAfter = result?.remainingAfter ?? availableAtEnd
           const state = pityStates[idx] ?? {
@@ -307,13 +336,17 @@ export function Roadmap() {
 
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
-                  <div className="label mb-2">You Will Have</div>
+                  <div className="label mb-2">Banner Resources</div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-500">Banner start</span>
+                    <span className="text-slate-500">Entering banner</span>
                     <span className="text-slate-900 font-semibold">{availableAtStart} pulls</span>
                   </div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-500">Banner end</span>
+                    <span className="text-slate-500">Rewards during banner</span>
+                    <span className="text-amber-700 font-semibold">+{rewardsDuringBanner} pulls</span>
+                  </div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-500">Available by end</span>
                     <span className="text-slate-900 font-semibold">{availableAtEnd} pulls</span>
                   </div>
                   <div className="flex justify-between text-xs">

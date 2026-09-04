@@ -181,6 +181,7 @@ export interface ChainStopResult {
   guaranteed: boolean       // worst-case guarantee status: assumes every 5-star costs hard pity
   guaranteedRealistic: boolean // same, but assumes every 5-star lands at the soft/hard pity midpoint
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
+  rewardsDuringBanner: number // estimated pulls earned during this banner phase
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
   actualSpend: number       // pullsToSpend if affordable, else 0 (roll-over)
   canAfford: boolean        // availableAtEnd >= pullsToSpend
