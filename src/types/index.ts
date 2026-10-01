@@ -15,6 +15,7 @@ export interface PlayerState {
   standardBannerPity: number
   chronicleBannerPity: number
   chronicleBannerGuaranteed: boolean
+  chronicleBannerFatePoints: number
   welkinActive: boolean
   welkinDaysRemaining: number
   battlePassMode: 'off' | 'free' | 'paid'
@@ -167,25 +168,36 @@ export interface ChainStop {
   patchId: string
   phase: 1 | 2
   label: string
-  pullsToSpend: number
+  bannerType?: WishBannerType
+  copies?: number // character copies or desired 5-star items; 1 = one copy
+  /** @deprecated Legacy saved plans may still contain this field. */
+  pullsToSpend?: number
 }
+
+export type WishBannerType = 'character' | 'weapon' | 'chronicled'
 
 export interface ChainStopResult {
   stop: ChainStop
+  bannerType: WishBannerType
+  copies: number
   patchVersion: string
   phaseDate: string
   phaseEndDate: string
   daysToStop: number
   daysToEnd: number
-  pullsToSpend: number      // user-set; pity carry applied internally to determine canAfford threshold
-  guaranteed: boolean       // worst-case guarantee status: assumes every 5-star costs hard pity
-  guaranteedRealistic: boolean // same, but assumes every 5-star lands at the soft/hard pity midpoint
+  pullsToSpend: number      // computed pity milestone; retained as a result field for compatibility
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   rewardsDuringBanner: number // estimated pulls earned during this banner phase
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
-  actualSpend: number       // pullsToSpend if affordable, else 0 (roll-over)
-  canAfford: boolean        // availableAtEnd >= pullsToSpend
+  actualSpend: number       // the largest reachable pity milestone, or 0
+  canAfford: boolean        // availableAtEnd reaches at least the next 5-star milestone
   remainingAfter: number    // availableAtEnd - actualSpend (always >= 0)
+  pityBefore: number
+  guaranteedBefore: boolean
+  fatePointsBefore: number
+  pityAfter: number
+  guaranteedAfter: boolean
+  fatePointsAfter: number
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────

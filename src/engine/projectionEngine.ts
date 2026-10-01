@@ -2,7 +2,7 @@ import { differenceInDays, parseISO, addDays, format } from 'date-fns'
 import type {
   PlayerState, ProjectionConfig, Patch, Target,
   ForecastResult, ForecastSnapshot, BreakdownItem,
-  ChainStop, ChainStopResult, PatchModifier, PatchType,
+  ChainStop, ChainStopResult, PatchModifier, PatchType, WishBannerType,
 } from '@/types'
 
 interface EngineInput {
@@ -530,6 +530,87 @@ function emptyResult(pullsNeeded: number, player: PlayerState, config: Projectio
 // estimate rather than the granular short-term engine.
 // A running deficit tracks cumulative pulls spent at prior stops.
 
+interface ChainPityState {
+  pity: number
+  guaranteed: boolean
+  fatePoints: number
+}
+
+function bannerTypeFor(stop: ChainStop): WishBannerType {
+  return stop.bannerType ?? 'character'
+}
+
+function bannerCopiesFor(stop: ChainStop): number {
+  return Math.max(1, Math.min(7, stop.copies ?? 1))
+}
+
+function bannerPityState(player: PlayerState, type: WishBannerType): ChainPityState {
+  if (type === 'weapon') {
+    return { pity: player.weaponBannerPity, guaranteed: false, fatePoints: player.weaponBannerFatePoints }
+  }
+  if (type === 'chronicled') {
+    return {
+      pity: player.chronicleBannerPity,
+      guaranteed: player.chronicleBannerGuaranteed,
+      fatePoints: player.chronicleBannerFatePoints ?? 0,
+    }
+  }
+  return { pity: player.characterBannerPity, guaranteed: player.characterBannerGuaranteed, fatePoints: 0 }
+}
+
+function bannerHardPity(config: ProjectionConfig, type: WishBannerType): number {
+  if (type === 'weapon') return config.hardPityWeapon
+  if (type === 'chronicled') return config.hardPityChronicle
+  return config.hardPityCharacter
+}
+
+// A roadmap stop spends only at a meaningful 5-star milestone. This prevents
+// an unaffordable 180-pull guarantee from consuming/carrying every pull when
+// the player has enough to reach the next 5-star (for example, 117 available
+// with an 80-pull hard pity spends 80 and carries 37).
+function bannerThresholds(
+  config: ProjectionConfig,
+  type: WishBannerType,
+  copies: number,
+  state: ChainPityState,
+): { nextFiveStar: number; targetGuarantee: number } {
+  const hard = bannerHardPity(config, type)
+  const nextFiveStar = Math.max(1, hard - state.pity)
+  const nextFeatured = state.guaranteed || ((type === 'weapon' || type === 'chronicled') && state.fatePoints > 0)
+    ? nextFiveStar
+    : nextFiveStar + hard
+  const extraCopies = Math.max(0, copies - 1)
+  return {
+    nextFiveStar,
+    targetGuarantee: nextFeatured + extraCopies * 2 * hard,
+  }
+}
+
+function applyChainSpend(
+  config: ProjectionConfig,
+  type: WishBannerType,
+  state: ChainPityState,
+  spend: number,
+): ChainPityState {
+  const hard = bannerHardPity(config, type)
+  const pity = state.pity
+  let guaranteed = state.guaranteed
+  let fatePoints = state.fatePoints
+  let remaining = pity + spend
+
+  while (remaining >= hard) {
+    remaining -= hard
+    if (type === 'weapon' || type === 'chronicled') {
+      // One Fate Point guarantees the selected weapon on the next 5-star.
+      fatePoints = fatePoints > 0 ? 0 : 1
+    } else {
+      guaranteed = !guaranteed
+    }
+  }
+
+  return { pity: remaining, guaranteed, fatePoints }
+}
+
 export function runChain(input: {
   player: PlayerState
   config: ProjectionConfig
@@ -543,11 +624,11 @@ export function runChain(input: {
   const results: ChainStopResult[] = []
   let deficit = 0
 
-  let pityCarry = player.characterBannerPity
-  let guaranteedCarry = player.characterBannerGuaranteed
-
-  let pityCarryRealistic = player.characterBannerPity
-  let guaranteedCarryRealistic = player.characterBannerGuaranteed
+  const pityCarry: Record<WishBannerType, ChainPityState> = {
+    character: bannerPityState(player, 'character'),
+    weapon: bannerPityState(player, 'weapon'),
+    chronicled: bannerPityState(player, 'chronicled'),
+  }
 
   for (const stop of chain) {
     const patch = patches.find((p) => p.id === stop.patchId)
@@ -560,60 +641,56 @@ export function runChain(input: {
     const daysToStop = Math.max(0, differenceInDays(phaseDate, today))
     const daysToEnd = Math.max(0, differenceInDays(phaseEnd, today))
 
+    const type = bannerTypeFor(stop)
+    const copies = bannerCopiesFor(stop)
+    const stateBefore = { ...pityCarry[type] }
+    const thresholds = bannerThresholds(config, type, copies, stateBefore)
+
     const snapStart = computeRoadmapSnapshot(player, config, patches, phaseDate, today, false)
     const snapEnd = computeRoadmapSnapshot(player, config, patches, phaseEnd, today)
 
     const availableAtStart = snapStart.totalPulls - deficit
     const availableAtEnd = snapEnd.totalPulls - deficit
 
-    const actualSpend = availableAtEnd >= stop.pullsToSpend ? stop.pullsToSpend : 0
+    // Reach the complete target when possible; otherwise reach one 5-star if
+    // possible. Pulls below the next pity threshold remain banked for later.
+    const plannedSpend = availableAtEnd >= thresholds.targetGuarantee
+      ? thresholds.targetGuarantee
+      : availableAtEnd >= thresholds.nextFiveStar
+        ? thresholds.nextFiveStar
+        : 0
+    const actualSpend = plannedSpend
     const canAfford = actualSpend > 0
-
-    const guaranteed = guaranteedCarry
-    const guaranteedRealistic = guaranteedCarryRealistic
 
     if (canAfford) {
       deficit += actualSpend
-
-      let totalPityInvestment = pityCarry + actualSpend
-      while (totalPityInvestment >= config.hardPityCharacter) {
-        totalPityInvestment -= config.hardPityCharacter
-        if (guaranteedCarry) {
-          guaranteedCarry = false
-        } else {
-          guaranteedCarry = true
-        }
-      }
-      pityCarry = totalPityInvestment
-
-      let totalPityInvestmentRealistic = pityCarryRealistic + actualSpend
-      while (totalPityInvestmentRealistic >= config.softPityCharacter) {
-        totalPityInvestmentRealistic -= config.softPityCharacter
-        if (guaranteedCarryRealistic) {
-          guaranteedCarryRealistic = false
-        } else {
-          guaranteedCarryRealistic = true
-        }
-      }
-      pityCarryRealistic = totalPityInvestmentRealistic
+      pityCarry[type] = applyChainSpend(config, type, stateBefore, actualSpend)
     }
+
+    const stateAfter = { ...pityCarry[type] }
 
     results.push({
       stop,
+      bannerType: type,
+      copies,
       patchVersion: patch.version,
       phaseDate: ph.startDate,
       phaseEndDate: format(phaseEnd, 'yyyy-MM-dd'),
       daysToStop,
       daysToEnd,
-      pullsToSpend: stop.pullsToSpend,
-      guaranteed,
-      guaranteedRealistic,
+      pullsToSpend: plannedSpend,
       availableAtStart,
       rewardsDuringBanner: Math.max(0, availableAtEnd - availableAtStart),
       availableAtEnd,
       actualSpend,
       canAfford,
       remainingAfter: availableAtEnd - actualSpend,
+      pityBefore: stateBefore.pity,
+      guaranteedBefore: stateBefore.guaranteed,
+      fatePointsBefore: stateBefore.fatePoints,
+      pityAfter: stateAfter.pity,
+      guaranteedAfter: stateAfter.guaranteed,
+      fatePointsAfter: stateAfter.fatePoints,
     })
   }
 

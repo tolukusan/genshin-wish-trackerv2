@@ -154,6 +154,12 @@ export function DataEntry() {
                         onChange={(v) => updatePlayer({ weaponBannerPity: v })}
                         max={79}
                     />
+                    <NumberInput
+                        label="Weapon Fate Points"
+                        value={player.weaponBannerFatePoints}
+                        onChange={(v) => updatePlayer({ weaponBannerFatePoints: v })}
+                        max={1}
+                    />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-300/40">
@@ -170,6 +176,12 @@ export function DataEntry() {
                         onChange={(v) =>
                             updatePlayer({ chronicleBannerGuaranteed: v })
                         }
+                    />
+                    <NumberInput
+                        label="Chronicled Fate Points"
+                        value={player.chronicleBannerFatePoints ?? 0}
+                        onChange={(v) => updatePlayer({ chronicleBannerFatePoints: v })}
+                        max={1}
                     />
                     <div className="flex flex-col gap-2">
                         <Toggle

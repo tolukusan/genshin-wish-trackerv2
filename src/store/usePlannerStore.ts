@@ -12,6 +12,7 @@ import type {
     Scenario,
     ChainStop,
     NavTab,
+    WishBannerType,
 } from "@/types";
 import { addDays, parseISO, format } from "date-fns";
 import { nanoid } from "@/utils/nanoid";
@@ -95,6 +96,7 @@ const defaultPlayer: PlayerState = {
     standardBannerPity: 0,
     chronicleBannerPity: 0,
     chronicleBannerGuaranteed: false,
+    chronicleBannerFatePoints: 0,
     welkinActive: false,
     welkinDaysRemaining: 0,
     battlePassMode: "off",
@@ -222,7 +224,7 @@ interface PlannerStore {
     updateScenario: (id: string, data: Partial<Omit<Scenario, "id">>) => void;
     deleteScenario: (id: string) => void;
     rebuildPatchDates: () => void;
-    addChainStop: () => void;
+    addChainStop: (bannerType?: WishBannerType) => void;
     updateChainStop: (id: string, data: Partial<Omit<ChainStop, "id">>) => void;
     deleteChainStop: (id: string) => void;
     moveChainStop: (id: string, direction: "up" | "down") => void;
@@ -402,8 +404,8 @@ export const usePlannerStore = create<PlannerStore>()(
                     scenarios: s.scenarios.filter((sc) => sc.id !== id),
                 })),
 
-            addChainStop: () => {
-                const { patches, chain, config, player } = get();
+            addChainStop: (bannerType = "character") => {
+                const { patches, chain } = get();
                 const today = new Date();
 
                 let nextPatchId = "";
@@ -439,19 +441,13 @@ export const usePlannerStore = create<PlannerStore>()(
                     }
                 }
 
-                // The first stop starts from the player's actual current pity;
-                // later stops assume a fresh cycle since we don't know how prior
-                // stops' 5-star luck will land until the chain is simulated.
-                const defaultPulls = chain.length === 0
-                    ? Math.max(1, config.hardPityCharacter - player.characterBannerPity)
-                    : config.hardPityCharacter;
-
                 const stop: ChainStop = {
                     id: nanoid(),
                     patchId: nextPatchId,
                     phase: nextPhase,
                     label: "",
-                    pullsToSpend: defaultPulls,
+                    bannerType,
+                    copies: 1,
                 };
                 set((s) => ({ chain: [...s.chain, stop] }));
             },
