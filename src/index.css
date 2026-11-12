@@ -173,7 +173,7 @@ body {
 .print-only { display: none; }
 
 @media print {
-  @page { size: A4 landscape; margin: 10mm; }
+  @page { size: A4 portrait; margin: 10mm; }
 
   * {
     -webkit-print-color-adjust: exact;
@@ -239,14 +239,14 @@ body {
 
   .print-roadmap .roadmap-grid {
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
   }
 
   .print-roadmap .roadmap-card {
     min-width: 0;
     padding: 8px !important;
-    font-size: 10px;
+    font-size: 11px;
     break-inside: avoid;
     page-break-inside: avoid;
   }
