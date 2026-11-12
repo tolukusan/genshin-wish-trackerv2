@@ -169,3 +169,110 @@ body {
 
 .animate-fade-in { animation: var(--animate-fade-in); }
 .animate-slide-up { animation: var(--animate-slide-up); }
+
+.print-only { display: none; }
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .print-roadmap {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .print-roadmap .print-hide {
+    display: none !important;
+  }
+
+  .print-roadmap main {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-roadmap .roadmap-page {
+    display: flex !important;
+    max-width: none !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    animation: none !important;
+  }
+
+  .print-roadmap .roadmap-header { order: 0; }
+  .print-roadmap .roadmap-before { order: 1; }
+  .print-roadmap .roadmap-summary { order: 2; }
+  .print-roadmap .roadmap-chain { order: 3; }
+
+  .print-roadmap .print-only {
+    display: block !important;
+  }
+
+  .print-roadmap .roadmap-before,
+  .print-roadmap .roadmap-summary {
+    padding: 10px !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  .print-roadmap .roadmap-summary {
+    break-after: page;
+  }
+
+  .print-roadmap .roadmap-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .print-roadmap .roadmap-card {
+    min-width: 0;
+    padding: 8px !important;
+    font-size: 10px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-roadmap .roadmap-card .label {
+    font-size: 8px;
+  }
+
+  .print-roadmap .roadmap-summary-scroll {
+    overflow: visible !important;
+  }
+
+  .print-roadmap .roadmap-summary table {
+    min-width: 0 !important;
+    width: 100% !important;
+    table-layout: auto;
+    font-size: 8px !important;
+  }
+
+  .print-roadmap .roadmap-summary th,
+  .print-roadmap .roadmap-summary td {
+    padding: 3px 4px !important;
+    white-space: normal !important;
+  }
+
+  .print-roadmap .roadmap-summary td:last-child {
+    min-width: 0 !important;
+  }
+}

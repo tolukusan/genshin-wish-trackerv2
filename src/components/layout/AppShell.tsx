@@ -12,9 +12,9 @@ export function AppShell() {
   const nav = usePlannerStore((s) => s.nav)
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className={`app-shell flex h-screen overflow-hidden${nav === 'roadmap' ? ' print-roadmap' : ''}`}>
       {/* Sidebar — desktop only */}
-      <div className="hidden sm:flex">
+      <div className="hidden sm:flex print-hide">
         <Sidebar />
       </div>
 
@@ -28,11 +28,13 @@ export function AppShell() {
       </main>
 
       {/* Bottom nav — mobile only */}
-      <div className="sm:hidden">
+      <div className="sm:hidden print-hide">
         <BottomNav />
       </div>
 
-      <DriveBanner />
+      <div className="print-hide">
+        <DriveBanner />
+      </div>
     </div>
   )
 }

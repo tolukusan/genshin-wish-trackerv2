@@ -118,17 +118,25 @@ export function Roadmap() {
   const pityStates = getPityStates(results)
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-6 animate-fade-in">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Roadmap</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Plan future banners in order. Each stop shows what you will have, what you need for the featured character,
-          what your pity milestone does, and what carries forward.
-        </p>
+    <div className="roadmap-page max-w-6xl mx-auto flex flex-col gap-6 animate-fade-in">
+      <div className="roadmap-header flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Roadmap</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Plan future banners in order. Each stop shows what you will have, what you need for the featured character,
+            what your pity milestone does, and what carries forward.
+          </p>
+          <p className="print-only text-xs text-slate-500 mt-1">
+            Generated {format(new Date(), 'MMM d, yyyy')}
+          </p>
+        </div>
+        <button className="btn-secondary print-hide shrink-0" onClick={() => window.print()}>
+          Print / Save as PDF
+        </button>
       </div>
 
       {bridge && (
-        <section className="card p-5 flex flex-col gap-3">
+        <section className="roadmap-before card p-5 flex flex-col gap-3">
           <SectionHeader
             title="Before the Roadmap"
             sub={`Predictable rewards before ${format(parseISO(bridge.cutoffDate), 'MMM d, yyyy')}; unclaimed current-patch event rewards are not estimated.`}
@@ -150,12 +158,12 @@ export function Roadmap() {
         </section>
       )}
 
-      <section className="card p-5 flex flex-col gap-4">
+      <section className="roadmap-chain card p-5 flex flex-col gap-4">
         <SectionHeader
           title="Pull Chain"
           sub="Add independent Character, Weapon, and Chronicled banners. Each banner has its own pity system and resource plan."
           action={
-            <div className="flex flex-wrap gap-2 justify-end">
+            <div className="flex flex-wrap gap-2 justify-end print-hide">
               <button className="btn-primary text-xs px-3 py-1.5" onClick={() => addChainStop('character')}>
                 + Character
               </button>
@@ -175,7 +183,7 @@ export function Roadmap() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <div className="roadmap-grid grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         {chain.map((stop, idx) => {
           const result = results[idx]
           const availableAtStart = result?.availableAtStart ?? 0
@@ -190,10 +198,16 @@ export function Roadmap() {
           }
           const outcome = outcomeFor(result, state, config)
           const shortBy = result ? Math.max(0, outcome.pullsToNextFiveStar - result.availableAtEnd) : 0
+          const selectedPatch = patches.find((patch) => patch.id === stop.patchId)
+          const selectedPhase = selectedPatch?.phases.find((phase) => phase.phase === stop.phase)
+          const selectedBannerLabel = selectedPatch
+            ? `v${selectedPatch.version} Phase ${stop.phase}${selectedPhase?.featuredCharacters[0] ? ` — ${selectedPhase.featuredCharacters[0]}` : ''}${selectedPhase ? ` · ${format(parseISO(selectedPhase.startDate), 'MMM d')}` : ''}`
+            : 'Select a banner'
 
           return (
             <div
               key={stop.id}
+              className="roadmap-card"
               style={{
                 borderRadius: '0.75rem',
                 border: '1px solid',
@@ -242,7 +256,7 @@ export function Roadmap() {
                     ? `v${result.patchVersion} Phase ${stop.phase} · ${format(parseISO(result.phaseDate), 'MMM d')}–${format(parseISO(result.phaseEndDate), 'MMM d, yyyy')} · ${result.daysToStop}d away`
                     : 'Select a banner'}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex gap-1 print-hide">
                   <button
                     onClick={() => moveChainStop(stop.id, 'up')}
                     disabled={idx === 0}
@@ -294,7 +308,7 @@ export function Roadmap() {
                 <div className="flex flex-col gap-1">
                   <label className="label">Banner</label>
                   <select
-                    className="input-base"
+                    className="input-base print-hide"
                     value={`${stop.patchId}:${stop.phase}`}
                     onChange={(e) => {
                       if (!e.target.value) return
@@ -318,6 +332,9 @@ export function Roadmap() {
                       )),
                     )}
                   </select>
+                  <span className="print-only rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-800">
+                    {selectedBannerLabel}
+                  </span>
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -329,13 +346,19 @@ export function Roadmap() {
                   </div>
                   <p className="text-xs text-slate-500">This is a separate banner plan.</p>
                 </div>
-                <NumberInput
-                  label={stop.bannerType === 'character' || !stop.bannerType ? 'Copies Wanted' : '5★ Items Wanted'}
-                  value={stop.copies ?? 1}
-                  min={1}
-                  max={7}
-                  onChange={(v) => updateChainStop(stop.id, { copies: v })}
-                />
+                <div className="print-hide">
+                  <NumberInput
+                    label={stop.bannerType === 'character' || !stop.bannerType ? 'Copies Wanted' : '5★ Items Wanted'}
+                    value={stop.copies ?? 1}
+                    min={1}
+                    max={7}
+                    onChange={(v) => updateChainStop(stop.id, { copies: v })}
+                  />
+                </div>
+                <div className="print-only flex justify-between text-xs">
+                  <span className="label">{stop.bannerType === 'character' || !stop.bannerType ? 'Copies Wanted' : '5★ Items Wanted'}</span>
+                  <span className="font-semibold">{stop.copies ?? 1}</span>
+                </div>
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-3">
@@ -432,9 +455,9 @@ export function Roadmap() {
       </section>
 
       {results.length > 0 && (
-        <section className="card p-5">
+        <section className="roadmap-summary card p-5">
           <SectionHeader title="Chain Summary" sub="What each banner does to your pull plan" />
-          <div className="overflow-x-auto overscroll-x-contain">
+          <div className="roadmap-summary-scroll overflow-x-auto overscroll-x-contain">
             <table style={{ minWidth: '760px', width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(203,213,225,0.7)' }}>
