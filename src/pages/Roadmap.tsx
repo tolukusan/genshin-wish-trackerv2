@@ -3,6 +3,7 @@ import { getRoadmapBridge, runChain } from '@/engine/projectionEngine'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { NumberInput } from '@/components/ui/NumberInput'
 import { format, parseISO } from 'date-fns'
+import { formatChance } from '@/engine/probability'
 import type { ChainStopResult, WishBannerType } from '@/types'
 
 type Tier = 'safe' | 'partial' | 'none'
@@ -103,6 +104,10 @@ const tierColor: Record<Tier, string> = {
   safe: '#059669',
   partial: '#b45309',
   none: '#dc2626',
+}
+
+function chanceColor(p: number): string {
+  return p >= 0.9 ? tierColor.safe : p >= 0.5 ? tierColor.partial : tierColor.none
 }
 
 export function Roadmap() {
@@ -396,6 +401,14 @@ export function Roadmap() {
                     <span className="text-slate-500">Featured guarantee</span>
                     <span className="text-slate-900 font-semibold">{outcome.pullsToGuaranteeFeatured}</span>
                   </div>
+                  {result && (
+                    <div className="flex justify-between text-xs mb-1" title="Chance of getting every copy you want if all pulls available by banner end go into this banner (published rates + community soft-pity model).">
+                      <span className="text-slate-500">Chance if you go all-in</span>
+                      <span className="font-semibold" style={{ color: chanceColor(result.successChance) }}>
+                        {formatChance(result.successChance)}
+                      </span>
+                    </div>
+                  )}
                   <div className="text-xs text-slate-500 mt-1">
                     {availableAtEnd >= outcome.pullsToGuaranteeFeatured
                       ? 'Your total resources can guarantee the featured character.'
@@ -458,10 +471,10 @@ export function Roadmap() {
         <section className="roadmap-summary card p-5">
           <SectionHeader title="Chain Summary" sub="What each banner does to your pull plan" />
           <div className="roadmap-summary-scroll overflow-x-auto overscroll-x-contain">
-            <table style={{ minWidth: '760px', width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <table style={{ minWidth: '820px', width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(203,213,225,0.7)' }}>
-                  {['#', 'Banner', 'By End', 'Pity / State', 'Need to Guarantee', 'Milestone', 'Actually Spent', 'Carry', 'Outcome'].map((h) => (
+                  {['#', 'Banner', 'By End', 'Pity / State', 'Need to Guarantee', 'Milestone', 'Actually Spent', 'Carry', 'All-in Chance', 'Outcome'].map((h) => (
                     <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>
                       {h}
                     </th>
@@ -493,6 +506,7 @@ export function Roadmap() {
                       <td style={{ padding: '0.5rem 0.75rem', color: '#334155' }}>{r.pullsToSpend}</td>
                       <td style={{ padding: '0.5rem 0.75rem', color: r.actualSpend > 0 ? '#059669' : '#dc2626', fontWeight: 600 }}>{r.actualSpend}</td>
                       <td style={{ padding: '0.5rem 0.75rem', color: '#059669', fontWeight: 600 }}>{r.remainingAfter}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: chanceColor(r.successChance), fontWeight: 600 }}>{formatChance(r.successChance)}</td>
                       <td style={{ padding: '0.5rem 0.75rem', color: tierColor[outcome.tier], fontWeight: 600, minWidth: '180px' }}>
                         {outcome.title}
                       </td>

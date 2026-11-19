@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { runProjection, buildTimeline } from '@/engine/projectionEngine'
+import { bannerOdds, chanceOfSuccess, formatChance } from '@/engine/probability'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { NumberInput } from '@/components/ui/NumberInput'
 import {
@@ -20,6 +21,20 @@ function NeedLine({ label, need, blocker = false }: { label: string; need: numbe
       <span style={{ color, fontWeight: met ? 500 : 600 }}>
         {met ? 'Have enough ✓' : `Need ${need} more`}
       </span>
+    </div>
+  )
+}
+
+// Chance of success for the whole pull budget, colored by how likely it is.
+function ChanceLine({ label, p }: { label: string; p: number }) {
+  const color = p >= 0.9 ? '#059669' : p >= 0.5 ? '#b45309' : '#dc2626'
+  return (
+    <div
+      className="flex items-center justify-between text-sm"
+      title="Uses the published rates plus the community soft-pity model; the 50/50 is treated as exactly 50% (Capturing Radiance is not modelled)."
+    >
+      <span className="text-slate-600">{label}</span>
+      <span style={{ color, fontWeight: 700 }}>{formatChance(p)}</span>
     </div>
   )
 }
@@ -88,6 +103,17 @@ export function NextCharacter() {
     pullsForGuaranteeSoftPity: forecast.pullsForGuaranteeSoftPity + extraCopies * 2 * config.softPityCharacter,
   } : null
   const copyWord = copies > 1 ? `${copies} copies` : 'a character'
+
+  // Probability of actually getting the featured character with the pulls
+  // you'll have (not just the worst case), from your current pity state.
+  const chance = forecast ? (() => {
+    const odds = bannerOdds(config, 'character')
+    const start = { pity: player.characterBannerPity, guaranteed: player.characterBannerGuaranteed }
+    return {
+      atStart: chanceOfSuccess(odds, start, forecast.atStart.totalPulls, copies),
+      atEnd: chanceOfSuccess(odds, start, forecast.atEnd.totalPulls, copies),
+    }
+  })() : null
 
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in">
@@ -187,6 +213,7 @@ export function NextCharacter() {
               <p style={{ fontSize: '2.25rem', fontWeight: 700, color: '#0f172a', lineHeight: 1 }}>
                 {forecast.atStart.totalPulls}
               </p>
+              {chance && <ChanceLine label={`Chance of ${copyWord} if you pull at the start`} p={chance.atStart} />}
               <div className="flex flex-col gap-1">
                 <NeedLine
                   label={`For ${copyWord}`}
@@ -223,6 +250,7 @@ export function NextCharacter() {
               <p style={{ fontSize: '2.25rem', fontWeight: 700, color: '#0f172a', lineHeight: 1 }}>
                 {forecast.atEnd.totalPulls}
               </p>
+              {chance && <ChanceLine label={`Chance of ${copyWord} by banner end`} p={chance.atEnd} />}
               <div className="flex flex-col gap-1">
                 <NeedLine
                   label={`For ${copyWord}`}

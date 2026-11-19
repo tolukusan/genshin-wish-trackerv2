@@ -14,7 +14,6 @@ export interface PlayerState {
   weaponBannerFatePoints: number
   standardBannerPity: number
   chronicleBannerPity: number
-  chronicleBannerGuaranteed: boolean
   chronicleBannerFatePoints: number
   welkinActive: boolean
   welkinDaysRemaining: number
@@ -198,6 +197,7 @@ export interface ChainStopResult {
   pityAfter: number
   guaranteedAfter: boolean
   fatePointsAfter: number
+  successChance: number     // chance of getting all copies if every pull available by banner end goes here
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────

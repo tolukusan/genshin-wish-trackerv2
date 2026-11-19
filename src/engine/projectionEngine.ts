@@ -4,6 +4,7 @@ import type {
   ForecastResult, ForecastSnapshot, BreakdownItem,
   ChainStop, ChainStopResult, PatchModifier, PatchType, WishBannerType,
 } from '@/types'
+import { bannerOdds, chanceOfSuccess } from './probability'
 
 interface EngineInput {
   player: PlayerState
@@ -551,7 +552,7 @@ function bannerPityState(player: PlayerState, type: WishBannerType): ChainPitySt
   if (type === 'chronicled') {
     return {
       pity: player.chronicleBannerPity,
-      guaranteed: player.chronicleBannerGuaranteed,
+      guaranteed: false,
       fatePoints: player.chronicleBannerFatePoints ?? 0,
     }
   }
@@ -634,11 +635,29 @@ export function runChain(input: {
     chronicled: bannerPityState(player, 'chronicled'),
   }
 
+  // Chronicled Fate Points expire when a Chronicled Wish ends (pity carries over).
+  // The player's current Fate Point belongs to the phase running today.
+  const phaseKey = (patchId: string, phase: number) => `${patchId}:${phase}`
+  let chronicledPhase: string | null = null
+  for (const p of patches) {
+    for (const ph of p.phases) {
+      if (parseISO(ph.startDate) <= today && today < parseISO(ph.endDate)) chronicledPhase = phaseKey(p.id, ph.phase)
+    }
+  }
+
   for (const stop of chain) {
     const patch = patches.find((p) => p.id === stop.patchId)
     if (!patch) continue
     const ph = patch.phases.find((p) => p.phase === stop.phase)
     if (!ph) continue
+
+    if (bannerTypeFor(stop) === 'chronicled') {
+      const key = phaseKey(stop.patchId, stop.phase)
+      if (key !== chronicledPhase) {
+        pityCarry.chronicled = { ...pityCarry.chronicled, guaranteed: false, fatePoints: 0 }
+        chronicledPhase = key
+      }
+    }
 
     const phaseDate = parseISO(ph.startDate)
     const phaseEnd = addDays(phaseDate, config.recurring.bannerDurationDays)
@@ -695,6 +714,12 @@ export function runChain(input: {
       pityAfter: stateAfter.pity,
       guaranteedAfter: stateAfter.guaranteed,
       fatePointsAfter: stateAfter.fatePoints,
+      successChance: chanceOfSuccess(
+        bannerOdds(config, type),
+        { pity: stateBefore.pity, guaranteed: stateBefore.guaranteed || stateBefore.fatePoints > 0 },
+        Math.max(0, availableAtEnd),
+        copies,
+      ),
     })
   }
 

@@ -171,17 +171,12 @@ export function DataEntry() {
                         }
                     />
                     <Toggle
-                        label="Chronicle Guaranteed"
-                        checked={player.chronicleBannerGuaranteed}
+                        label="Chronicled Fate Point (guaranteed)"
+                        hint="Next 5★ is your chosen item. Expires when the current Chronicled Wish ends."
+                        checked={(player.chronicleBannerFatePoints ?? 0) > 0}
                         onChange={(v) =>
-                            updatePlayer({ chronicleBannerGuaranteed: v })
+                            updatePlayer({ chronicleBannerFatePoints: v ? 1 : 0 })
                         }
-                    />
-                    <NumberInput
-                        label="Chronicled Fate Points"
-                        value={player.chronicleBannerFatePoints ?? 0}
-                        onChange={(v) => updatePlayer({ chronicleBannerFatePoints: v })}
-                        max={1}
                     />
                     <div className="flex flex-col gap-2">
                         <Toggle

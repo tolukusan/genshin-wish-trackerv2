@@ -95,7 +95,6 @@ const defaultPlayer: PlayerState = {
     weaponBannerFatePoints: 0,
     standardBannerPity: 0,
     chronicleBannerPity: 0,
-    chronicleBannerGuaranteed: false,
     chronicleBannerFatePoints: 0,
     welkinActive: false,
     welkinDaysRemaining: 0,
@@ -212,7 +211,20 @@ interface LegacyPersistedState {
     nav?: string;
     config?: Omit<Partial<ProjectionConfig>, "recurring"> & { recurring?: LegacyRecurring };
     patches?: LegacyPatch[];
+    // v12 and earlier had a separate chronicled "guaranteed" flag, which is the
+    // same thing as holding a chronicled Fate Point.
+    player?: Partial<PlayerState> & { chronicleBannerGuaranteed?: boolean };
     [key: string]: unknown;
+}
+
+function migratePlayer(player: LegacyPersistedState["player"]): Partial<PlayerState> | undefined {
+    if (!player) return player;
+    const { chronicleBannerGuaranteed, ...rest } = player;
+    const fatePoints = rest.chronicleBannerFatePoints ?? 0;
+    return {
+        ...rest,
+        chronicleBannerFatePoints: chronicleBannerGuaranteed || fatePoints > 0 ? 1 : 0,
+    };
 }
 
 // Upgrades persisted data from any earlier version to the current shape.
@@ -288,6 +300,7 @@ export function migratePersistedState(input: unknown): PlannerStore {
                 ? "roadmap"
                 : oldNav,
         patches: migratedPatches,
+        ...(persisted.player && { player: migratePlayer(persisted.player) }),
         config: {
             ...defaultConfig,
             ...persisted.config,
@@ -615,7 +628,7 @@ export const usePlannerStore = create<PlannerStore>()(
         }),
         {
             name: "genshin-wish-projection",
-            version: 12,
+            version: 13,
             migrate: (persisted) => migratePersistedState(persisted),
         },
     ),
