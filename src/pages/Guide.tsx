@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { GUIDE } from '@/content/guide'
+import { GUIDE_VISUALS } from '@/components/guide/registry'
 import { usePlannerStore } from '@/store/usePlannerStore'
 
 // Renders a guide paragraph list; consecutive "• " lines become one bullet list.
@@ -15,7 +16,7 @@ function Paragraphs({ lines }: { lines: string[] }) {
     }
   }
   return (
-    <>
+    <div className="flex flex-col gap-2">
       {blocks.map((b, i) =>
         Array.isArray(b) ? (
           <ul key={i} className="list-disc pl-5 flex flex-col gap-1 text-sm text-slate-700">
@@ -25,7 +26,7 @@ function Paragraphs({ lines }: { lines: string[] }) {
           <p key={i} className="text-sm text-slate-700 leading-relaxed">{b}</p>
         ),
       )}
-    </>
+    </div>
   )
 }
 
@@ -42,31 +43,48 @@ export function Guide() {
   }, [guideTopic])
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6 animate-fade-in">
+    <div className="max-w-3xl mx-auto flex flex-col gap-5 animate-fade-in">
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Guide</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          How the planner works, what its numbers mean, and which parts are educated guesses.
+          How the planner works, in pictures. Open "More detail" on any card for the full explanation.
         </p>
       </div>
 
-      <nav className="card p-5" aria-label="Guide contents">
-        <p className="label mb-2">Contents</p>
-        <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1">
-          {GUIDE.map((t) => (
-            <li key={t.id}>
-              <a href={`#guide-${t.id}`} className="text-sm text-accent-purple hover:underline">{t.title}</a>
-            </li>
-          ))}
-        </ul>
+      <nav aria-label="Guide topics" className="flex flex-wrap gap-1.5">
+        {GUIDE.map((t) => (
+          <a
+            key={t.id}
+            href={`#guide-${t.id}`}
+            className="text-xs rounded-full border px-2.5 py-1 text-slate-700 hover:border-violet-400 hover:text-violet-700 bg-white"
+            style={{ borderColor: '#cbd5e1' }}
+          >
+            {t.title}
+          </a>
+        ))}
       </nav>
 
-      {GUIDE.map((t) => (
-        <section key={t.id} id={`guide-${t.id}`} className="card p-5 flex flex-col gap-3 scroll-mt-4">
-          <h2 className="text-base font-semibold text-slate-900">{t.title}</h2>
-          <Paragraphs lines={t.body} />
-        </section>
-      ))}
+      {GUIDE.map((t) => {
+        const { Visual, interactive } = GUIDE_VISUALS[t.id]
+        return (
+          <section key={t.id} id={`guide-${t.id}`} className="card p-5 flex flex-col gap-3 scroll-mt-4" aria-labelledby={`guide-h-${t.id}`}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 id={`guide-h-${t.id}`} className="text-base font-semibold text-slate-900">{t.title}</h2>
+              {interactive && (
+                <span className="text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5" style={{ background: 'rgba(124,58,237,0.1)', color: '#5b21b6' }}>
+                  Try it
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-slate-700">{t.summary}</p>
+            <Visual />
+            <details>
+              <summary className="text-xs font-semibold text-accent-purple cursor-pointer select-none">More detail</summary>
+              <div className="mt-2"><Paragraphs lines={t.body} /></div>
+            </details>
+          </section>
+        )
+      })}
 
       <div className="flex flex-wrap gap-3">
         <button className="btn-primary" onClick={() => setNav('data-entry')}>Enter my resources</button>

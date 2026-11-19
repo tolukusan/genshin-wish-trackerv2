@@ -91,3 +91,17 @@ describe('formatChance', () => {
     expect(formatChance(1)).toBe('100%')
   })
 })
+
+describe('chanceCurve', () => {
+  it('matches chanceOfSuccess at every point and never decreases', async () => {
+    const { chanceCurve } = await import('./probability')
+    const curve = chanceCurve(character, fresh, 180)
+    expect(curve).toHaveLength(181)
+    expect(curve[0]).toBe(0)
+    expect(curve[180]).toBe(1)
+    for (const n of [1, 30, 74, 90, 120, 179]) {
+      expect(curve[n]).toBeCloseTo(chanceOfSuccess(character, fresh, n), 12)
+    }
+    for (let n = 1; n < curve.length; n++) expect(curve[n]).toBeGreaterThanOrEqual(curve[n - 1])
+  })
+})

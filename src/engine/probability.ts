@@ -50,16 +50,15 @@ export interface OddsStart {
 }
 
 /**
- * Probability of getting at least `copies` featured items within `pulls` pulls.
+ * Cumulative chance curve: element n is the probability of having at least
+ * `copies` featured items within n pulls (element 0 is always 0).
  * Exact dynamic programme over (pity, guaranteed, copies obtained).
  */
-export function chanceOfSuccess(odds: BannerOdds, start: OddsStart, pulls: number, copies = 1): number {
+export function chanceCurve(odds: BannerOdds, start: OddsStart, maxPulls: number, copies = 1): number[] {
   const want = Math.max(1, Math.floor(copies))
-  const n = Math.max(0, Math.floor(pulls))
+  const n = Math.max(0, Math.floor(maxPulls))
   const hard = Math.max(1, Math.floor(odds.hardPity))
-  // Every copy needs at most two 5-stars, each within hard pity.
-  if (n >= want * 2 * hard) return 1
-  if (n === 0) return 0
+  const curve = new Array<number>(n + 1).fill(0)
 
   // dist[(c * 2 + g) * hard + k] = probability of having c copies, guaranteed g,
   // and k pulls since the last 5-star, without having succeeded yet.
@@ -91,10 +90,20 @@ export function chanceOfSuccess(odds: BannerOdds, start: OddsStart, pulls: numbe
       }
     }
     ;[dist, next] = [next, dist]
+    // Snap floating-point dust so a certain outcome reads as 100%, not ">99%".
+    curve[pull + 1] = success > 1 - 1e-9 ? 1 : Math.max(0, success)
   }
-  // Snap floating-point dust so a certain outcome reads as 100%, not ">99%".
-  if (success > 1 - 1e-9) return 1
-  return Math.max(0, success)
+  return curve
+}
+
+/** Probability of getting at least `copies` featured items within `pulls` pulls. */
+export function chanceOfSuccess(odds: BannerOdds, start: OddsStart, pulls: number, copies = 1): number {
+  const want = Math.max(1, Math.floor(copies))
+  const n = Math.max(0, Math.floor(pulls))
+  // Every copy needs at most two 5-stars, each within hard pity.
+  if (n >= want * 2 * Math.max(1, Math.floor(odds.hardPity))) return 1
+  if (n === 0) return 0
+  return chanceCurve(odds, start, n, want)[n]
 }
 
 export function formatChance(p: number): string {

@@ -2,8 +2,9 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { guideTopic, type GuideTopicId } from '@/content/guide'
 import { usePlannerStore } from '@/store/usePlannerStore'
+import { GUIDE_VISUALS } from '@/components/guide/registry'
 
-const POPOVER_WIDTH = 288 // px (18rem)
+const POPOVER_WIDTH = 320 // px (20rem); fits a compact chart
 const MARGIN = 8
 
 // Small "?" button that explains a concept in place, using the same text as
@@ -14,10 +15,12 @@ export function InfoTip({ topic, label }: { topic: GuideTopicId; label?: string 
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const popRef = useRef<HTMLSpanElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
   const id = useId()
   const openGuide = usePlannerStore((s) => s.openGuide)
   const t = guideTopic(topic)
+  const visual = GUIDE_VISUALS[topic]
+  const Thumb = visual.inTips ? visual.Visual : null
 
   // Place below the button (or above if there is no room), clamped to the viewport.
   useLayoutEffect(() => {
@@ -75,7 +78,7 @@ export function InfoTip({ topic, label }: { topic: GuideTopicId; label?: string 
         ?
       </button>
       {open && createPortal(
-        <span
+        <div
           ref={popRef}
           id={id}
           role="dialog"
@@ -90,6 +93,11 @@ export function InfoTip({ topic, label }: { topic: GuideTopicId; label?: string 
           }}
         >
           <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{t.title}</span>
+          {Thumb && (
+            <div style={{ pointerEvents: 'none' }} aria-hidden>
+              <Thumb compact />
+            </div>
+          )}
           <span style={{ fontSize: '0.78rem', color: '#334155', lineHeight: 1.45 }}>{t.summary}</span>
           <button
             type="button"
@@ -98,7 +106,7 @@ export function InfoTip({ topic, label }: { topic: GuideTopicId; label?: string 
           >
             Read more in the Guide →
           </button>
-        </span>,
+        </div>,
         document.body,
       )}
     </span>

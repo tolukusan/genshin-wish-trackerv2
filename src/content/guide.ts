@@ -5,9 +5,8 @@
 export type GuideTopicId =
   | 'getting-started'
   | 'how-projections-work'
-  | 'future-is-speculation'
+  | 'unknowns'
   | 'patch-types'
-  | 'banner-labels'
   | 'pity'
   | 'fifty-fifty'
   | 'fate-points'
@@ -48,13 +47,13 @@ export const GUIDE: GuideTopic[] = [
     ],
   },
   {
-    id: 'future-is-speculation',
-    title: 'Future patches are speculation',
-    summary: 'Nobody knows future banners or patch content in advance. The app uses averages and your own guesses; treat results as a plan, not a promise.',
+    id: 'unknowns',
+    title: "What the app can't know",
+    summary: 'Future banners, featured characters and patch content are not announced in advance, so the app uses averages and your own guesses. Treat results as a plan, not a promise.',
     body: [
-      'HoYoverse only announces a patch shortly before it releases, so this app cannot know future featured characters, events, or whether a patch adds a new area.',
-      'Instead it uses averages from past patches and lets you make your own guesses. Different players will reasonably speculate differently, and that is expected.',
-      'When a patch is officially announced, update its type on the Patches page (and optionally label its banners in Settings → Featured Characters) to sharpen the projection.',
+      'HoYoverse only announces a patch shortly before it releases, so the app cannot know future featured characters, events, or whether a patch adds a new area. Different players will reasonably guess differently, and that is expected.',
+      'Banners are therefore listed by version and phase, for example "v7.3 Phase 1 · Dec 16". Once a banner is announced you can add character names in Settings → Featured Characters; they only label the pickers and do not change any numbers.',
+      'When a patch is announced, update its type on the Patches page to sharpen the projection.',
     ],
   },
   {
@@ -68,15 +67,6 @@ export const GUIDE: GuideTopic[] = [
       '• New Region: a whole new nation or region (usually x.0 patches). About 102 or more.',
       '• Anniversary (+about 22) and Lantern Rite (+about 20 to 26) stack on top of the base type.',
       'Every patch starts as Standard because the content is not known ahead of time. If you expect a patch to add an area, change it on the Patches page. The averages come from community F2P bookkeeping of patches 5.0 to 7.2 and can be edited in Settings.',
-    ],
-  },
-  {
-    id: 'banner-labels',
-    title: 'Banner names',
-    summary: 'Banners are identified by version and phase (for example "v7.3 Phase 1") because future featured characters are unknown. You can add names once they are announced.',
-    body: [
-      'Future featured characters are not known, so banners are listed by version and phase, for example "v7.3 Phase 1 · Dec 16".',
-      'Once a banner is announced you can add the character names in Settings → Featured Characters. They then appear in the banner pickers. This is optional and does not change any numbers.',
     ],
   },
   {

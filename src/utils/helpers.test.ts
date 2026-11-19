@@ -25,7 +25,14 @@ describe('hasEnteredResources', () => {
   })
 })
 
-describe('guide content', () => {
+describe('guide content and visuals', () => {
+  it('has content for every topic id (InfoTips throw on a missing topic)', async () => {
+    const { GUIDE_VISUALS } = await import('@/components/guide/registry')
+    const ids = Object.keys(GUIDE_VISUALS) as (keyof typeof GUIDE_VISUALS)[]
+    for (const id of ids) expect(() => guideTopic(id)).not.toThrow()
+    expect(GUIDE.map((t) => t.id).sort()).toEqual([...ids].sort())
+  })
+
   it('has unique ids and a summary and body for every topic', () => {
     const ids = GUIDE.map((t) => t.id)
     expect(new Set(ids).size).toBe(ids.length)

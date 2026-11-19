@@ -147,7 +147,7 @@ export function NextCharacter() {
         <SectionHeader title="Target Banner" sub="Defaults to the next upcoming banner — change it to check a further-out one" />
         <div className="grid sm:grid-cols-3 gap-4">
           <div className="flex flex-col gap-1">
-            <label className="label" htmlFor="target-banner">Patch & Phase<InfoTip topic="banner-labels" /></label>
+            <label className="label" htmlFor="target-banner">Patch & Phase<InfoTip topic="unknowns" /></label>
             <select
               id="target-banner"
               className="input-base"
