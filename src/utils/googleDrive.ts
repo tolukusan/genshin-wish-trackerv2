@@ -25,16 +25,37 @@ const GIS_URL = 'https://accounts.google.com/gsi/client'
 
 let accessToken: string | null = null
 
+const GIS_TIMEOUT_MS = 15_000
+
+let gisPromise: Promise<void> | null = null
+
+// Loads Google Identity Services once. Rejects (instead of hanging forever)
+// if the script is blocked, fails, or takes too long, and allows a retry.
 function loadGIS(): Promise<void> {
-  return new Promise((resolve) => {
-    if (window.google?.accounts) { resolve(); return }
+  if (window.google?.accounts) return Promise.resolve()
+  if (gisPromise) return gisPromise
+
+  gisPromise = new Promise<void>((resolve, reject) => {
     const script = document.createElement('script')
+    const fail = (reason: string) => {
+      clearTimeout(timer)
+      script.remove()
+      gisPromise = null
+      reject(new Error(reason))
+    }
+    const timer = setTimeout(() => fail('Google sign-in script timed out'), GIS_TIMEOUT_MS)
     script.src = GIS_URL
     script.async = true
     script.defer = true
-    script.onload = () => resolve()
+    script.onload = () => {
+      clearTimeout(timer)
+      if (window.google?.accounts) resolve()
+      else fail('Google sign-in script loaded without its API')
+    }
+    script.onerror = () => fail('Google sign-in script failed to load')
     document.head.appendChild(script)
   })
+  return gisPromise
 }
 
 export async function driveSignIn(clientId: string): Promise<void> {

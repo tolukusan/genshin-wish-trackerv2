@@ -189,6 +189,113 @@ function buildSeedPatches(
     return patches;
 }
 
+// ── Migration ─────────────────────────────────────────────────────────────────
+
+// Loose shapes of data saved by older app versions. Every field is optional
+// because the data may come from any past version (or an outside file).
+interface LegacyRecurring
+    extends Partial<Omit<RecurringConfig,
+        "patchTypeRewards" | "patchTypeTotalWishes" | "patchModifierRewards" | "patchModifierTotalWishes">> {
+    // Older versions also stored "lantern-rite" here as a patch type.
+    patchTypeRewards?: Partial<Record<string, number>>;
+    patchTypeTotalWishes?: Partial<Record<string, number>>;
+    patchModifierRewards?: Partial<Record<PatchModifier, number>>;
+    patchModifierTotalWishes?: Partial<Record<PatchModifier, number>>;
+}
+
+interface LegacyPatch extends Omit<Patch, "patchType" | "modifiers"> {
+    patchType: PatchType | "lantern-rite";
+    modifiers?: unknown;
+}
+
+interface LegacyPersistedState {
+    nav?: string;
+    config?: Omit<Partial<ProjectionConfig>, "recurring"> & { recurring?: LegacyRecurring };
+    patches?: LegacyPatch[];
+    [key: string]: unknown;
+}
+
+// Upgrades persisted data from any earlier version to the current shape.
+// Used by zustand's persist middleware and when importing data from elsewhere.
+export function migratePersistedState(input: unknown): PlannerStore {
+    if (!input || typeof input !== "object") return input as PlannerStore;
+    const persisted = input as LegacyPersistedState;
+    const oldNav = persisted.nav;
+    const oldRecurring: LegacyRecurring = persisted.config?.recurring ?? {};
+
+    const oldPatchRewards = oldRecurring.patchTypeRewards ?? {};
+    const oldPatchTotals = oldRecurring.patchTypeTotalWishes ?? {};
+    const oldLanternRewards = oldPatchRewards["lantern-rite"];
+    const oldLanternTotals = oldPatchTotals["lantern-rite"];
+
+    const migratedRecurring: RecurringConfig = {
+        ...defaultRecurring,
+        ...oldRecurring,
+        patchTypeRewards: {
+            standard: oldPatchRewards.standard ?? defaultRecurring.patchTypeRewards.standard,
+            "sub-area": oldPatchRewards["sub-area"] ?? defaultRecurring.patchTypeRewards["sub-area"],
+            "new-region": oldPatchRewards["new-region"] === 12140
+                ? defaultRecurring.patchTypeRewards["new-region"]
+                : oldPatchRewards["new-region"] ?? defaultRecurring.patchTypeRewards["new-region"],
+        },
+        patchModifierRewards: {
+            anniversary: oldRecurring.patchModifierRewards?.anniversary
+                ?? defaultRecurring.patchModifierRewards.anniversary,
+            "lantern-rite": oldRecurring.patchModifierRewards?.["lantern-rite"]
+                ?? (oldLanternRewards != null
+                    ? Math.max(0, oldLanternRewards - (oldPatchRewards.standard ?? 3052))
+                    : defaultRecurring.patchModifierRewards["lantern-rite"]),
+        },
+        patchTypeTotalWishes: {
+            standard: oldPatchTotals.standard ?? defaultRecurring.patchTypeTotalWishes.standard,
+            "sub-area": oldPatchTotals["sub-area"] ?? defaultRecurring.patchTypeTotalWishes["sub-area"],
+            "new-region": oldPatchTotals["new-region"] === 128
+                ? defaultRecurring.patchTypeTotalWishes["new-region"]
+                : oldPatchTotals["new-region"] ?? defaultRecurring.patchTypeTotalWishes["new-region"],
+        },
+        patchModifierTotalWishes: {
+            anniversary: oldRecurring.patchModifierTotalWishes?.anniversary
+                ?? defaultRecurring.patchModifierTotalWishes.anniversary,
+            "lantern-rite": oldRecurring.patchModifierTotalWishes?.["lantern-rite"]
+                ?? (oldLanternTotals != null
+                    ? Math.max(0, oldLanternTotals - (oldPatchTotals.standard ?? 67))
+                    : defaultRecurring.patchModifierTotalWishes["lantern-rite"]),
+        },
+    };
+
+    const migratedPatches: Patch[] = (persisted.patches ?? []).map((p) => {
+        const legacyLantern = p.patchType === "lantern-rite";
+        const existingModifiers: PatchModifier[] = Array.isArray(p.modifiers)
+            ? p.modifiers.filter((m): m is PatchModifier => m === "anniversary" || m === "lantern-rite")
+            : [];
+        const modifiers = [...existingModifiers];
+        if (legacyLantern && !modifiers.includes("lantern-rite")) modifiers.push("lantern-rite");
+        if (p.version === "7.1" && !modifiers.includes("anniversary")) modifiers.push("anniversary");
+
+        return {
+            ...p,
+            patchType: p.patchType === "lantern-rite" ? "standard" : p.patchType,
+            modifiers,
+        };
+    });
+
+    return {
+        ...persisted,
+        nav:
+            oldNav === "dashboard" || oldNav === "forecast"
+                ? "next-character"
+                : oldNav === "scenarios"
+                ? "roadmap"
+                : oldNav,
+        patches: migratedPatches,
+        config: {
+            ...defaultConfig,
+            ...persisted.config,
+            recurring: migratedRecurring,
+        },
+    } as unknown as PlannerStore;
+}
+
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 interface PlannerStore {
@@ -509,81 +616,7 @@ export const usePlannerStore = create<PlannerStore>()(
         {
             name: "genshin-wish-projection",
             version: 12,
-            migrate: (persisted: any) => {
-                if (!persisted) return persisted;
-                const oldNav = persisted.nav;
-                const oldRecurring = persisted.config?.recurring ?? {};
-
-                const oldPatchRewards = oldRecurring.patchTypeRewards ?? {};
-                const oldPatchTotals = oldRecurring.patchTypeTotalWishes ?? {};
-
-                const migratedRecurring: RecurringConfig = {
-                    ...defaultRecurring,
-                    ...oldRecurring,
-                    patchTypeRewards: {
-                        standard: oldPatchRewards.standard ?? defaultRecurring.patchTypeRewards.standard,
-                        "sub-area": oldPatchRewards["sub-area"] ?? defaultRecurring.patchTypeRewards["sub-area"],
-                        "new-region": oldPatchRewards["new-region"] === 12140
-                            ? defaultRecurring.patchTypeRewards["new-region"]
-                            : oldPatchRewards["new-region"] ?? defaultRecurring.patchTypeRewards["new-region"],
-                    },
-                    patchModifierRewards: {
-                        anniversary: oldRecurring.patchModifierRewards?.anniversary
-                            ?? defaultRecurring.patchModifierRewards.anniversary,
-                        "lantern-rite": oldRecurring.patchModifierRewards?.["lantern-rite"]
-                            ?? (oldPatchRewards["lantern-rite"] != null
-                                ? Math.max(0, oldPatchRewards["lantern-rite"] - (oldPatchRewards.standard ?? 3052))
-                                : defaultRecurring.patchModifierRewards["lantern-rite"]),
-                    },
-                    patchTypeTotalWishes: {
-                        standard: oldPatchTotals.standard ?? defaultRecurring.patchTypeTotalWishes.standard,
-                        "sub-area": oldPatchTotals["sub-area"] ?? defaultRecurring.patchTypeTotalWishes["sub-area"],
-                        "new-region": oldPatchTotals["new-region"] === 128
-                            ? defaultRecurring.patchTypeTotalWishes["new-region"]
-                            : oldPatchTotals["new-region"] ?? defaultRecurring.patchTypeTotalWishes["new-region"],
-                    },
-                    patchModifierTotalWishes: {
-                        anniversary: oldRecurring.patchModifierTotalWishes?.anniversary
-                            ?? defaultRecurring.patchModifierTotalWishes.anniversary,
-                        "lantern-rite": oldRecurring.patchModifierTotalWishes?.["lantern-rite"]
-                            ?? (oldPatchTotals["lantern-rite"] != null
-                                ? Math.max(0, oldPatchTotals["lantern-rite"] - (oldPatchTotals.standard ?? 67))
-                                : defaultRecurring.patchModifierTotalWishes["lantern-rite"]),
-                    },
-                };
-
-                const migratedPatches = (persisted.patches ?? []).map((p: any) => {
-                    const legacyLantern = p.patchType === "lantern-rite";
-                    const existingModifiers: PatchModifier[] = Array.isArray(p.modifiers)
-                        ? p.modifiers.filter((m: string) => m === "anniversary" || m === "lantern-rite")
-                        : [];
-                    const modifiers = [...existingModifiers];
-                    if (legacyLantern && !modifiers.includes("lantern-rite")) modifiers.push("lantern-rite");
-                    if (p.version === "7.1" && !modifiers.includes("anniversary")) modifiers.push("anniversary");
-
-                    return {
-                        ...p,
-                        patchType: legacyLantern ? "standard" : p.patchType,
-                        modifiers,
-                    };
-                });
-
-                return {
-                    ...persisted,
-                    nav:
-                        oldNav === "dashboard" || oldNav === "forecast"
-                            ? "next-character"
-                            : oldNav === "scenarios"
-                            ? "roadmap"
-                            : oldNav,
-                    patches: migratedPatches,
-                    config: {
-                        ...defaultConfig,
-                        ...persisted.config,
-                        recurring: migratedRecurring,
-                    },
-                };
-            },
+            migrate: (persisted) => migratePersistedState(persisted),
         },
     ),
 );

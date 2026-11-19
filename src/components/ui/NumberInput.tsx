@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 interface NumberInputProps {
   label: string
@@ -12,14 +12,16 @@ interface NumberInputProps {
 
 export function NumberInput({ label, value, onChange, min = 0, max, step = 1, hint }: NumberInputProps) {
   const [raw, setRaw] = useState(String(value))
+  const [prevValue, setPrevValue] = useState(value)
 
-  // Sync when value changes externally
-  useEffect(() => {
-    setRaw((prev) => {
-      const parsed = parseFloat(prev)
-      return isNaN(parsed) || parsed !== value ? String(value) : prev
-    })
-  }, [value])
+  // Sync when value changes externally (adjusting state during render,
+  // per https://react.dev/learn/you-might-not-need-an-effect). Keep the raw
+  // text when it already parses to the new value, e.g. "1." while typing.
+  if (value !== prevValue) {
+    setPrevValue(value)
+    const parsed = parseFloat(raw)
+    if (isNaN(parsed) || parsed !== value) setRaw(String(value))
+  }
 
   const commit = (str: string) => {
     const parsed = parseFloat(str)

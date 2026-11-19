@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { usePlannerStore } from '@/store/usePlannerStore'
+import { usePlannerStore, migratePersistedState } from '@/store/usePlannerStore'
 import {
   driveCheckExists, driveLoad,
   getStoredClientId, getLastSyncTime, setLastSyncTime,
@@ -23,8 +23,11 @@ export function DriveBanner() {
   async function useDriveData() {
     setLoading(true)
     try {
-      const data = await driveLoad() as any
-      if (!data) { setShow(false); return }
+      const loaded = await driveLoad()
+      if (!loaded || typeof loaded !== 'object' || Array.isArray(loaded)) return
+      // Drive data may have been saved by an older app version: upgrade it the
+      // same way browser-stored data is upgraded before using it.
+      const data = migratePersistedState(loaded)
       usePlannerStore.setState({
         ...(data.player && { player: data.player }),
         ...(data.config && { config: data.config }),
@@ -34,6 +37,8 @@ export function DriveBanner() {
         ...(data.chain && { chain: data.chain }),
       })
       setLastSyncTime()
+    } catch (err) {
+      console.error('Failed to load Drive data', err)
     } finally {
       setShow(false)
     }
