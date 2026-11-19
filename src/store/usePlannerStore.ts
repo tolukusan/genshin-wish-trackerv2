@@ -16,6 +16,7 @@ import type {
 } from "@/types";
 import { addDays, parseISO, format } from "date-fns";
 import { nanoid } from "@/utils/nanoid";
+import type { GuideTopicId } from "@/content/guide";
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
 
@@ -26,16 +27,12 @@ const defaultRecurring: RecurringConfig = {
     imaginariumTheatreMax: 1000,
     stygianOnslaughtMax: 450,
     monthlyShopIntertwined: 5,
-    battlePassPaidPrimos: 680,
-    battlePassPaidFates: 4,
-    trialPrimosPerPhase: 20,
+    trialPrimosPerPhase: 40, // 2 character banners per phase × 20 primos each
     bannerDurationDays: 20,
     patchLengthDays: 42,
     phase2OffsetDays: 21,
     patchAnchorVersion: "6.6",
     patchAnchorDate: "2026-05-20",
-    primoPerFate: 160,
-    starglitterPerFate: 5,
     starglitterRefundPercent: 10,
     maintenancePrimos: 600,
     livestreamPrimos: 300,
@@ -73,13 +70,6 @@ const defaultConfig: ProjectionConfig = {
     monthlyShopIncluded: true,
     maintenanceIncluded: true,
     livestreamIncluded: true,
-    softPityCharacter: 74,
-    hardPityCharacter: 90,
-    softPityChronicle: 74,
-    hardPityChronicle: 90,
-    softPityWeapon: 63,
-    hardPityWeapon: 80,
-    strictGuarantee: true,
     // Capturing Radiance (5.0+) pushes the effective 50/50 above 50%; community
     // data shows ~55-59%. 55 is a moderate default. Worst-case guarantees ignore it.
     fiftyFiftyWinPercent: 55,
@@ -233,6 +223,21 @@ function migratePlayer(player: LegacyPersistedState["player"]): Partial<PlayerSt
 }
 
 // Upgrades persisted data from any earlier version to the current shape.
+// Settings removed in v16: they are fixed game rules now (see engine/gameRules.ts).
+const REMOVED_CONFIG_KEYS = [
+    "strictGuarantee",
+    "softPityCharacter", "hardPityCharacter",
+    "softPityWeapon", "hardPityWeapon",
+    "softPityChronicle", "hardPityChronicle",
+];
+const REMOVED_RECURRING_KEYS = ["primoPerFate", "starglitterPerFate", "battlePassPaidPrimos", "battlePassPaidFates"];
+
+function withoutKeys<T extends object>(obj: T, keys: string[]): T {
+    const out = { ...obj } as Record<string, unknown>;
+    for (const key of keys) delete out[key];
+    return out as T;
+}
+
 // Used by zustand's persist middleware and when importing data from elsewhere.
 export function migratePersistedState(input: unknown): PlannerStore {
     if (!input || typeof input !== "object") return input as PlannerStore;
@@ -247,7 +252,12 @@ export function migratePersistedState(input: unknown): PlannerStore {
 
     const migratedRecurring: RecurringConfig = {
         ...defaultRecurring,
-        ...oldRecurring,
+        ...withoutKeys(oldRecurring, REMOVED_RECURRING_KEYS),
+        // Pre-v15 default was 20, but each phase has two character banners with
+        // a 20-primo trial each. Custom values are kept.
+        trialPrimosPerPhase: oldRecurring.trialPrimosPerPhase === 20 || oldRecurring.trialPrimosPerPhase == null
+            ? defaultRecurring.trialPrimosPerPhase
+            : oldRecurring.trialPrimosPerPhase,
         patchTypeRewards: {
             standard: oldPatchRewards.standard ?? defaultRecurring.patchTypeRewards.standard,
             "sub-area": oldPatchRewards["sub-area"] ?? defaultRecurring.patchTypeRewards["sub-area"],
@@ -312,7 +322,7 @@ export function migratePersistedState(input: unknown): PlannerStore {
         ...(persisted.player && { player: migratePlayer(persisted.player) }),
         config: {
             ...defaultConfig,
-            ...persisted.config,
+            ...withoutKeys(persisted.config ?? {}, REMOVED_CONFIG_KEYS),
             recurring: migratedRecurring,
         },
     } as unknown as PlannerStore;
@@ -328,8 +338,12 @@ interface PlannerStore {
     target: Target | null;
     scenarios: Scenario[];
     chain: ChainStop[];
+    introDismissed: boolean;     // "Getting started" card hidden by the user
+    guideTopic: GuideTopicId | null; // section the Guide page should scroll to
 
     setNav: (tab: NavTab) => void;
+    openGuide: (topic?: GuideTopicId) => void;
+    setIntroDismissed: (dismissed: boolean) => void;
     updatePlayer: (patch: Partial<PlayerState>) => void;
     updateConfig: (patch: Partial<ProjectionConfig>) => void;
     updateRecurring: (patch: Partial<RecurringConfig>) => void;
@@ -374,8 +388,12 @@ export const usePlannerStore = create<PlannerStore>()(
             target: null,
             scenarios: [],
             chain: [],
+            introDismissed: false,
+            guideTopic: null,
 
             setNav: (tab) => set({ nav: tab }),
+            openGuide: (topic) => set({ nav: "guide", guideTopic: topic ?? null }),
+            setIntroDismissed: (dismissed) => set({ introDismissed: dismissed }),
 
             updatePlayer: (patch) =>
                 set((s) => ({ player: { ...s.player, ...patch } })),
@@ -637,7 +655,7 @@ export const usePlannerStore = create<PlannerStore>()(
         }),
         {
             name: "genshin-wish-projection",
-            version: 14,
+            version: 16,
             migrate: (persisted) => migratePersistedState(persisted),
         },
     ),

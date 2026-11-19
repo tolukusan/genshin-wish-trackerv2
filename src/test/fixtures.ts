@@ -4,9 +4,9 @@ import type { ChainStop, Patch, PlayerState, ProjectionConfig, WishBannerType } 
 export const config: ProjectionConfig = {
   recurring: {
     dailyCommissions: 60, welkinDaily: 90, spiralAbyssMax: 800, imaginariumTheatreMax: 1000,
-    stygianOnslaughtMax: 450, monthlyShopIntertwined: 5, battlePassPaidPrimos: 680, battlePassPaidFates: 4,
-    trialPrimosPerPhase: 20, bannerDurationDays: 20, patchLengthDays: 42, phase2OffsetDays: 21,
-    patchAnchorVersion: '7.2', patchAnchorDate: '2026-11-04', primoPerFate: 160, starglitterPerFate: 5, starglitterRefundPercent: 10,
+    stygianOnslaughtMax: 450, monthlyShopIntertwined: 5,
+    trialPrimosPerPhase: 40, bannerDurationDays: 20, patchLengthDays: 42, phase2OffsetDays: 21,
+    patchAnchorVersion: '7.2', patchAnchorDate: '2026-11-04', starglitterRefundPercent: 10,
     maintenancePrimos: 600, livestreamPrimos: 300,
     patchTypeRewards: { standard: 3052, 'sub-area': 4812, 'new-region': 9670 },
     patchModifierRewards: { anniversary: 3200, 'lantern-rite': 6768 },
@@ -16,8 +16,7 @@ export const config: ProjectionConfig = {
   commissionsIncluded: true, welkinIncluded: false, spiralAbyssEnabled: true,
   imaginariumTheatreEnabled: true, stygianOnslaughtEnabled: true, characterTrialsEnabled: true,
   battlePassIncluded: true, monthlyShopIncluded: true, maintenanceIncluded: true, livestreamIncluded: true,
-  softPityCharacter: 74, hardPityCharacter: 90, softPityChronicle: 74, hardPityChronicle: 90,
-  softPityWeapon: 63, hardPityWeapon: 80, strictGuarantee: true,
+
   fiftyFiftyWinPercent: 50, starglitterRefundIncluded: false,
 }
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePlannerStore } from "@/store/usePlannerStore";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { format, parseISO } from "date-fns";
 import type { PatchModifier, PatchType } from "@/types";
 
@@ -30,7 +31,7 @@ export function Patches() {
 
     return (
         <div className="max-w-4xl mx-auto flex flex-col gap-6 animate-fade-in">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div>
                     <h1 className="text-xl font-semibold text-slate-900">
                         Patches
@@ -39,8 +40,13 @@ export function Patches() {
                         Choose the base content level, then add any special reward bonuses that overlap.
                         Estimates and bonus values live in Settings.
                     </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Future patch content is not announced ahead of time, so every patch starts as Standard.
+                        Mark the ones you expect to add an area or bonus; it is your best guess until the patch is announced.
+                        <InfoTip topic="patch-types" />
+                    </p>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex flex-wrap sm:justify-end gap-2 shrink-0">
                     <button className="btn-secondary" onClick={() => setShowMissingForm((shown) => !shown)}>
                         + Add Missing Patch
                     </button>
@@ -102,7 +108,7 @@ export function Patches() {
                         <tr className="border-b border-slate-300/50 text-left">
                             <th className="p-3 text-xs font-medium text-slate-500">Version</th>
                             <th className="p-3 text-xs font-medium text-slate-500">Window</th>
-                            <th className="p-3 text-xs font-medium text-slate-500">Base Content</th>
+                            <th className="p-3 text-xs font-medium text-slate-500">Base Content<InfoTip topic="patch-types" /></th>
                             <th className="p-3 text-xs font-medium text-slate-500">Special Bonuses</th>
                             <th className="p-3"></th>
                         </tr>
@@ -159,7 +165,11 @@ export function Patches() {
                                 </td>
                                 <td className="p-3 text-right">
                                     <button
-                                        onClick={() => deletePatch(patch.id)}
+                                        onClick={() => {
+                                            // Deleting removes the patch from projections and any plans using it.
+                                            if (window.confirm(`Delete v${patch.version}? This cannot be undone.`)) deletePatch(patch.id)
+                                        }}
+                                        aria-label={`Delete patch v${patch.version}`}
                                         className="btn-danger px-2 py-1 text-xs"
                                     >
                                         Delete

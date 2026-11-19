@@ -34,16 +34,12 @@ export interface RecurringConfig {
   imaginariumTheatreMax: number  // primos per reset (resets on 1st)
   stygianOnslaughtMax: number    // primos per reset (patch_start + 7)
   monthlyShopIntertwined: number // fates per monthly reset (1st)
-  battlePassPaidPrimos: number   // primos per cycle (paid)
-  battlePassPaidFates: number    // fates per cycle (paid)
   trialPrimosPerPhase: number    // primos per phase (2 trials × 20)
   bannerDurationDays: number     // days from phase start to phase end (default 20)
   patchLengthDays: number        // days per patch
   phase2OffsetDays: number       // days from phase 1 start to phase 2
   patchAnchorVersion: string     // e.g. "6.6"
   patchAnchorDate: string        // ISO date
-  primoPerFate: number           // always 160
-  starglitterPerFate: number     // starglitter needed per fate
   starglitterRefundPercent: number // estimated extra pulls refunded as starglitter, % of pulls (when enabled)
   maintenancePrimos: number      // patch maintenance reward, applied to every patch
   livestreamPrimos: number      // livestream code reward, applied to every patch
@@ -69,13 +65,6 @@ export interface ProjectionConfig extends IncomeToggles {
   recurring: RecurringConfig
   maintenanceIncluded: boolean
   livestreamIncluded: boolean
-  softPityCharacter: number
-  hardPityCharacter: number
-  softPityChronicle: number
-  hardPityChronicle: number
-  softPityWeapon: number
-  hardPityWeapon: number
-  strictGuarantee: boolean
   fiftyFiftyWinPercent: number      // chance (%) to win the character 50/50; only affects chance of success
   starglitterRefundIncluded: boolean // add estimated starglitter refunds to projected pulls
 }
@@ -138,12 +127,6 @@ export interface ForecastResult {
   pullsForGuarantee: number
   canGuaranteeAtStart: boolean
   canGuaranteeAtEnd: boolean
-  // Pulls needed to reach soft pity (where 5-star drop rate starts climbing)
-  pullsToSoftPity: number
-  // Same as pullsForGuarantee, but using soft pity instead of hard pity as the per-copy cost
-  pullsForGuaranteeSoftPity: number
-  canGuaranteeAtStartSoftPity: boolean
-  canGuaranteeAtEndSoftPity: boolean
 }
 
 export interface BreakdownItem {
@@ -205,4 +188,4 @@ export interface ChainStopResult {
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
-export type NavTab = 'next-character' | 'data-entry' | 'patches' | 'roadmap' | 'settings'
+export type NavTab = 'next-character' | 'data-entry' | 'patches' | 'roadmap' | 'settings' | 'guide'

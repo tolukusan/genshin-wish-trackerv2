@@ -1,79 +1,65 @@
 # Genshin Wish Projection
 
-A Genshin Impact wish projection tool. Enter your current resources and pity, configure upcoming patches, and see exactly how many pulls you'll have by any future banner.
+A Genshin Impact pull planner. Enter what you have today, and see how many wishes you will have by a future banner, your chance of getting the character, and whether you can guarantee it. Plan several character, weapon and Chronicled banners in a row.
 
-## Features
+**Live app:** https://tolukusan.github.io/genshin-wish-trackerv2/
 
-- **Dashboard** — overview of current primogems, fates, pity, welkin, and forecast summary at a glance
-- **Patches** — manage patch timelines, Phase 1 / Phase 2 banner dates, per-patch events (with primo and fate amounts), maintenance rewards, and livestream code amounts
-- **Forecast** — project your pull count to a target banner at both banner start and banner end; pulls needed auto-calculated from your current pity and 50/50 status
-- **Scenarios** — chain multiple banners together; declare how many pulls you'll spend at each stop and see whether the math works out for every banner in sequence
-- **Settings** — edit all projection constants (abyss rewards, Welkin, battle pass, patch cadence, default event counts, etc.)
-- **Export / Import** — save and restore your full planner state as JSON
+Future banners and patch content are not announced ahead of time, so the planner uses averages from past patches plus your own guesses. Treat results as a plan, not a promise. The in-app **Guide** explains every number and assumption.
 
-## Income Sources Modelled
+## Using it
 
-| Source              | Timing                                                                       |
-| ------------------- | ---------------------------------------------------------------------------- |
-| Daily Commissions   | Every day                                                                    |
-| Welkin Moon         | Every day (capped by days remaining)                                         |
-| Spiral Abyss        | Resets on the 16th of each month                                             |
-| Imaginarium Theatre | Resets on the 1st of each month                                              |
-| Stygian Onslaught   | 7 days after each patch start                                                |
-| Character Trials    | 40 primos per banner phase                                                   |
-| Monthly Shop        | 5 fates on the 1st of each month                                             |
-| Battle Pass (paid)  | 680 primos + 4 fates per completed patch cycle                               |
-| Patch Maintenance   | Available from Phase 1 start (configurable per patch)                        |
-| Livestream Codes    | 12 days before the next patch start (configurable per patch)                 |
-| Custom Events       | Per-patch events with primo and fate amounts, assigned to Phase 1 or Phase 2 |
-| Starglitter         | Converted at 5 starglitter per fate                                          |
+1. **Data Entry**: enter your primogems, fates, starglitter and pity on each banner, and turn on Welkin or Battle Pass if you have them. This is the only required step.
+2. **Patches** (optional): the schedule is generated automatically. Every future patch starts as *Standard*; mark ones you expect to add a sub-area or new region, or to include Anniversary or Lantern Rite.
+3. **Next Character**: pick the banner you are saving for. You get pulls at banner start and end, your chance of success, and the worst-case pulls needed.
+4. **Roadmap**: add several banners in order. The planner spends what each needs, carries the rest forward, and tracks pity, 50/50 and Fate Points between them. Print or save it as a PDF.
+5. **Settings**: income values and estimates are editable, plus two odds assumptions (50/50 win rate, starglitter refunds). Fixed game rules (pity, 160 primogems per fate, Battle Pass rewards) are shown but not editable. Export/Import JSON backs up your data.
 
-## Stack
+Data is saved in your browser only (localStorage).
 
-- **React 19** + **TypeScript**
-- **Vite 8** with `@tailwindcss/vite` plugin (Tailwind v4)
-- **Zustand** with `persist` middleware (localStorage)
-- **Recharts** for the pull growth timeline chart
-- **date-fns** for all date arithmetic
+## What is counted
 
-## Getting Started
+| Source | Timing |
+| --- | --- |
+| Daily Commissions | Every day |
+| Welkin Moon | Every day while active (if turned on) |
+| Spiral Abyss | Resets on the 16th of each month |
+| Imaginarium Theater | Resets on the 1st of each month |
+| Stygian Onslaught | 7 days after each patch start |
+| Character Trials | 40 primogems per banner phase (2 banners × 20) |
+| Monthly Shop | 5 fates on the 1st of each month |
+| Battle Pass (paid) | 680 primogems + 4 fates per patch (if turned on) |
+| Maintenance compensation | 600 primogems per patch |
+| Livestream codes | 300 primogems, 12 days before the next patch |
+| Future patch content | Per-patch estimate by type: Standard ≈68, Sub-area ≈84, New Region ≈102 wishes; Anniversary +24, Lantern Rite +20 (Roadmap) |
+| Starglitter | 5 starglitter per fate; optional estimated refunds from future pulls (+10%, off by default) |
+
+Rewards from events in the current patch are not counted, since the app cannot know which you have claimed. Patch estimates come from community F2P bookkeeping of patches 5.0 to 7.2.
+
+## Odds model
+
+- 5★ base rate 0.6% (weapon 0.7%), soft pity from pull 74 (weapon 63) rising about 6% (7%) per pull, hard pity 90 (80).
+- Character 50/50 win rate is a setting (default 55%, reflecting Capturing Radiance). Weapon: 37.5% for the chosen weapon; Chronicled: 50%. Fate Points guarantee the next 5★; Chronicled Fate Points expire when the Chronicled Wish ends.
+- "Guarantee" numbers are worst case (every 5★ at hard pity, every 50/50 lost). "Chance" is the exact probability with the pulls you will have.
+
+## Development
 
 ```bash
-cd app
 pnpm install
-pnpm run dev
+pnpm run dev      # http://localhost:5173
+pnpm run test     # Vitest
+pnpm run lint
+pnpm run build
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Pushing to `main` runs lint, tests and build, then deploys to GitHub Pages.
 
-## Patch Defaults
-
-- Anchor: **v6.6**, starting **May 20, 2026**
-- Patch length: **42 days**
-- Phase 2 offset: **21 days** after Phase 1
-- Banner duration window: **20 days**
-- Default events per patch: **3** (2 in Phase 1 × 420 primos, 1 in Phase 2 × 420 primos)
-
-All values are editable in Settings.
-
-## Project Structure
+Stack: React 19, TypeScript, Vite 8, Tailwind v4, Zustand (persisted), Recharts, date-fns, Vitest.
 
 ```
-app/
-  src/
-    engine/
-      projectionEngine.ts   # all calculation logic (pure functions)
-    pages/
-      Dashboard.tsx
-      Forecast.tsx
-      Patches.tsx
-      Scenarios.tsx
-      Settings.tsx
-    store/
-      usePlannerStore.ts    # Zustand store with persist
-    types/
-      index.ts              # shared TypeScript types
-    components/
-      ui/                   # NumberInput, Toggle, StatCard, SectionHeader
-      layout/               # AppShell, Sidebar
+src/
+  engine/       projectionEngine.ts (income + Roadmap chain), probability.ts (odds), tests
+  content/      guide.ts (Guide page and "?" tooltip text)
+  pages/        NextCharacter, DataEntry, Patches, Roadmap, Settings, Guide
+  store/        usePlannerStore.ts (state, persistence, data migrations)
+  components/   layout/ (AppShell, Sidebar, BottomNav), ui/ (InfoTip, GettingStarted, inputs)
 ```

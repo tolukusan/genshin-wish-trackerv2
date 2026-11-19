@@ -2,6 +2,7 @@ import { usePlannerStore, migratePersistedState } from "@/store/usePlannerStore"
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Toggle } from "@/components/ui/Toggle";
+import { GAME_RULES } from "@/engine/gameRules";
 import { parseISO, isWithinInterval, format } from "date-fns";
 import type { PatchModifier, PatchType } from "@/types";
 
@@ -25,6 +26,7 @@ export function Settings() {
         resetConfig,
         rebuildPatchDates,
         updatePhase,
+        openGuide,
     } = usePlannerStore();
 
     const r = config.recurring;
@@ -343,7 +345,7 @@ export function Settings() {
             </section>
 
             <section className="card p-5">
-                <SectionHeader title="Featured Characters" sub="Labels shown for each banner phase" />
+                <SectionHeader title="Featured Characters" sub="Optional: add names once a banner is announced. They only label banners in the pickers and do not change any numbers." />
                 <div className="flex flex-col gap-3">
                     {patches.map((patch) => (
                         <div key={patch.id} className="grid sm:grid-cols-3 gap-3 items-end">
@@ -371,36 +373,21 @@ export function Settings() {
             </section>
 
             <section className="card p-5">
-                <SectionHeader title="Battle Pass" sub="Paid tier only — free tier yields 0 primos" />
+                <SectionHeader
+                    title="Odds Assumptions"
+                    sub="Educated guesses that players disagree on. They change the chance figures and projected pulls, never the worst-case numbers."
+                />
                 <div className="grid sm:grid-cols-2 gap-4">
-                    <NumberInput
-                        label="Paid — Primos per cycle"
-                        value={r.battlePassPaidPrimos}
-                        onChange={(v) => updateRecurring({ battlePassPaidPrimos: v })}
-                    />
-                    <NumberInput
-                        label="Paid — Fates per cycle"
-                        value={r.battlePassPaidFates}
-                        onChange={(v) => updateRecurring({ battlePassPaidFates: v })}
-                    />
-                </div>
-            </section>
-
-            <section className="card p-5">
-                <SectionHeader title="Currency" />
-                <div className="grid sm:grid-cols-2 gap-4">
-                    <NumberInput
-                        label="Primogems per Fate"
-                        value={r.primoPerFate}
-                        onChange={(v) => updateRecurring({ primoPerFate: v })}
-                        hint="Standard is 160"
-                    />
-                    <NumberInput
-                        label="Starglitter per Fate"
-                        value={r.starglitterPerFate}
-                        onChange={(v) => updateRecurring({ starglitterPerFate: v })}
-                        hint="Standard is 5"
-                    />
+                    <div className="sm:col-span-2">
+                        <NumberInput
+                            label="50/50 Win Rate (%)"
+                            value={config.fiftyFiftyWinPercent ?? 55}
+                            onChange={(v) => updateConfig({ fiftyFiftyWinPercent: v })}
+                            min={50}
+                            max={100}
+                            hint="Used only for chance of success. Capturing Radiance makes it ~55–59% in practice; worst-case guarantees still assume a loss."
+                        />
+                    </div>
                     <div className="sm:col-span-2">
                         <Toggle
                             label="Count starglitter refunds"
@@ -422,57 +409,20 @@ export function Settings() {
             </section>
 
             <section className="card p-5">
-                <SectionHeader title="Pity Thresholds" />
-                <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2 mb-2">
-                        <Toggle
-                            label="Strict Guarantee"
-                            hint="Calculate 'Can Guarantee' using 180 pulls for 50/50 players."
-                            checked={config.strictGuarantee}
-                            onChange={(v: boolean) => updateConfig({ strictGuarantee: v })}
-                        />
-                    </div>
-                    <div className="sm:col-span-2">
-                        <NumberInput
-                            label="50/50 Win Rate (%)"
-                            value={config.fiftyFiftyWinPercent ?? 55}
-                            onChange={(v) => updateConfig({ fiftyFiftyWinPercent: v })}
-                            min={50}
-                            max={100}
-                            hint="Used only for chance of success. Capturing Radiance makes it ~55–59% in practice; worst-case guarantees still assume a loss."
-                        />
-                    </div>
-                    <NumberInput
-                        label="Character Soft Pity"
-                        value={config.softPityCharacter}
-                        onChange={(v) => updateConfig({ softPityCharacter: v })}
-                    />
-                    <NumberInput
-                        label="Character Hard Pity"
-                        value={config.hardPityCharacter}
-                        onChange={(v) => updateConfig({ hardPityCharacter: v })}
-                    />
-                    <NumberInput
-                        label="Weapon Soft Pity"
-                        value={config.softPityWeapon}
-                        onChange={(v) => updateConfig({ softPityWeapon: v })}
-                    />
-                    <NumberInput
-                        label="Weapon Hard Pity"
-                        value={config.hardPityWeapon}
-                        onChange={(v) => updateConfig({ hardPityWeapon: v })}
-                    />
-                    <NumberInput
-                        label="Chronicle Soft Pity"
-                        value={config.softPityChronicle}
-                        onChange={(v) => updateConfig({ softPityChronicle: v })}
-                    />
-                    <NumberInput
-                        label="Chronicle Hard Pity"
-                        value={config.hardPityChronicle}
-                        onChange={(v) => updateConfig({ hardPityChronicle: v })}
-                    />
-                </div>
+                <SectionHeader
+                    title="Game Rules"
+                    sub="Fixed by the game, so they are not editable. Every calculation uses these values."
+                />
+                <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm text-slate-700">
+                    <li>5★ guaranteed by pull <b>{GAME_RULES.hardPity.character}</b> on character and Chronicled banners, <b>{GAME_RULES.hardPity.weapon}</b> on the weapon banner</li>
+                    <li>Soft pity (rate climbs) from pull <b>{GAME_RULES.softPity.character}</b>, weapon <b>{GAME_RULES.softPity.weapon}</b></li>
+                    <li>After a lost 50/50 or with a Fate Point, the next 5★ is the featured or chosen item</li>
+                    <li><b>{GAME_RULES.primogemsPerFate}</b> primogems or <b>{GAME_RULES.starglitterPerFate}</b> starglitter per Intertwined Fate</li>
+                    <li>Paid Battle Pass: <b>{GAME_RULES.battlePassPaid.primogems}</b> primogems + <b>{GAME_RULES.battlePassPaid.fates}</b> fates per patch (free tier: none)</li>
+                </ul>
+                <button className="mt-3 text-xs font-semibold text-accent-purple hover:underline" onClick={() => openGuide("pity")}>
+                    How pity and guarantees work →
+                </button>
             </section>
 
             <section className="card p-5">

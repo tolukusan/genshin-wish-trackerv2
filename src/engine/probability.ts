@@ -3,8 +3,8 @@
 //
 // Rates (HoYoverse publishes base rate, hard pity and the 50/50; the soft-pity
 // ramp is a community-derived model from large pull datasets):
-//   - Character / Chronicled: 0.6% base, +6% per pull from soft pity, 100% at hard pity.
-//   - Weapon:                 0.7% base, +7% per pull from soft pity, 100% at hard pity.
+//   - Character / Chronicled: 0.6% base, +6% per pull from soft pity (74), 100% at hard pity (90).
+//   - Weapon:                 0.7% base, +7% per pull from soft pity (63), 100% at hard pity (80).
 // Featured chance on a 5-star (when not already guaranteed):
 //   - Character: the "50/50 win rate" setting (default 55%). Capturing Radiance
 //     (5.0+) lifts the effective rate above 50%; paimon.moe's global tally
@@ -15,6 +15,7 @@
 // "guaranteed", or one Fate Point on weapon/chronicled).
 
 import type { ProjectionConfig, WishBannerType } from '@/types'
+import { GAME_RULES } from './gameRules'
 
 export interface BannerOdds {
   baseRate: number
@@ -26,14 +27,14 @@ export interface BannerOdds {
 
 export function bannerOdds(config: ProjectionConfig, type: WishBannerType): BannerOdds {
   if (type === 'weapon') {
-    return { baseRate: 0.007, softPityStart: config.softPityWeapon, rateStep: 0.07, hardPity: config.hardPityWeapon, featuredChance: 0.375 }
+    return { baseRate: 0.007, softPityStart: GAME_RULES.softPity.weapon, rateStep: 0.07, hardPity: GAME_RULES.hardPity.weapon, featuredChance: 0.375 }
   }
   if (type === 'chronicled') {
-    return { baseRate: 0.006, softPityStart: config.softPityChronicle, rateStep: 0.06, hardPity: config.hardPityChronicle, featuredChance: 0.5 }
+    return { baseRate: 0.006, softPityStart: GAME_RULES.softPity.chronicled, rateStep: 0.06, hardPity: GAME_RULES.hardPity.chronicled, featuredChance: 0.5 }
   }
   const winPercent = config.fiftyFiftyWinPercent ?? 55
   const featuredChance = Math.min(1, Math.max(0, winPercent / 100))
-  return { baseRate: 0.006, softPityStart: config.softPityCharacter, rateStep: 0.06, hardPity: config.hardPityCharacter, featuredChance }
+  return { baseRate: 0.006, softPityStart: GAME_RULES.softPity.character, rateStep: 0.06, hardPity: GAME_RULES.hardPity.character, featuredChance }
 }
 
 // 5-star rate for the n-th pull since the last 5-star (n is 1-based).

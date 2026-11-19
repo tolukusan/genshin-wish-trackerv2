@@ -8,10 +8,11 @@ const NAV: { tab: NavTab; label: string; icon: string }[] = [
   { tab: 'patches', label: 'Patches', icon: '◈' },
   { tab: 'roadmap', label: 'Roadmap', icon: '⇢' },
   { tab: 'settings', label: 'Settings', icon: '⚙' },
+  { tab: 'guide', label: 'Guide', icon: '?' },
 ]
 
 export function BottomNav() {
-  const { nav, setNav } = usePlannerStore()
+  const { nav, setNav, openGuide } = usePlannerStore()
 
   return (
     <nav
@@ -30,7 +31,7 @@ export function BottomNav() {
       {NAV.map(({ tab, label, icon }) => (
         <button
           key={tab}
-          onClick={() => setNav(tab)}
+          onClick={() => (tab === 'guide' ? openGuide() : setNav(tab))}
           style={{ flex: 1, padding: '0.5rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem', border: 'none', background: 'transparent', cursor: 'pointer' }}
           className={clsx(
             'transition-colors',

@@ -9,6 +9,7 @@ const NAV: { tab: NavTab; label: string; icon: string }[] = [
   { tab: 'patches', label: 'Patches', icon: '◈' },
   { tab: 'roadmap', label: 'Roadmap', icon: '⇢' },
   { tab: 'settings', label: 'Settings', icon: '⚙' },
+  { tab: 'guide', label: 'Guide', icon: '?' },
 ]
 
 function prevVersion(v: string) {
@@ -17,7 +18,7 @@ function prevVersion(v: string) {
 }
 
 export function Sidebar() {
-  const { nav, setNav, patches, config } = usePlannerStore()
+  const { nav, setNav, openGuide, patches, config } = usePlannerStore()
 
   const today = new Date()
   const currentPatch = patches.find((p) =>
@@ -58,7 +59,7 @@ export function Sidebar() {
         {NAV.map(({ tab, label, icon }) => (
           <button
             key={tab}
-            onClick={() => setNav(tab)}
+            onClick={() => (tab === 'guide' ? openGuide() : setNav(tab))}
             className={clsx(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left w-full',
               nav === tab

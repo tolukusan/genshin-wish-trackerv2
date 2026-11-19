@@ -5,6 +5,7 @@ import type {
   ChainStop, ChainStopResult, PatchModifier, PatchType, WishBannerType,
 } from '@/types'
 import { bannerOdds, chanceOfSuccess } from './probability'
+import { GAME_RULES } from './gameRules'
 
 interface EngineInput {
   player: PlayerState
@@ -161,7 +162,7 @@ function computeSnapshot(
     push({ source: `Stygian Onslaught (${hits.length}×)`, primogems: primos, fates: 0 })
   }
 
-  // Character Trials — 20 primos per phase whose start date is in (today, cutoff]
+  // Character Trials — trialPrimosPerPhase (2 banners × 20) per phase starting in (today, cutoff]
   if (config.characterTrialsEnabled) {
     const phases = countTrialPhases(patches, cutoff, today)
     const primos = phases * r.trialPrimosPerPhase
@@ -183,8 +184,8 @@ function computeSnapshot(
       if (ph2Start > today && ph2Start <= cutoff) {
         bpCount++
         if (player.battlePassMode === 'paid') {
-          bpPrimos += r.battlePassPaidPrimos
-          bpFates += r.battlePassPaidFates
+          bpPrimos += GAME_RULES.battlePassPaid.primogems
+          bpFates += GAME_RULES.battlePassPaid.fates
         }
       }
     }
@@ -243,7 +244,7 @@ function computeSnapshot(
   }
 
   // Starglitter
-  const starglitterFates = Math.floor(player.starglitter / r.starglitterPerFate)
+  const starglitterFates = Math.floor(player.starglitter / GAME_RULES.starglitterPerFate)
   if (starglitterFates > 0) {
     gainedFates += starglitterFates
     push({ source: 'Starglitter', primogems: 0, fates: starglitterFates })
@@ -251,7 +252,7 @@ function computeSnapshot(
 
   // Totals (per spec: all primos summed first, then converted together)
   const totalPrimos = currentPrimos + gainedPrimos
-  const totalFates = currentFates + Math.floor(totalPrimos / r.primoPerFate) + gainedFates
+  const totalFates = currentFates + Math.floor(totalPrimos / GAME_RULES.primogemsPerFate) + gainedFates
   const totalPulls = withStarglitterRefund(Math.floor(totalFates), config, push)
 
   return {
@@ -377,8 +378,8 @@ function computeRoadmapSnapshot(
       if (ph2Start > today && (ph2Start < cutoff || (includePhasesStartingAtCutoff && ph2Start <= cutoff))) {
         bpCount++
         if (player.battlePassMode === 'paid') {
-          bpPrimos += r.battlePassPaidPrimos
-          bpFates += r.battlePassPaidFates
+          bpPrimos += GAME_RULES.battlePassPaid.primogems
+          bpFates += GAME_RULES.battlePassPaid.fates
         }
       }
     }
@@ -413,14 +414,14 @@ function computeRoadmapSnapshot(
   }
 
   // Starglitter
-  const starglitterFates = Math.floor(player.starglitter / r.starglitterPerFate)
+  const starglitterFates = Math.floor(player.starglitter / GAME_RULES.starglitterPerFate)
   if (starglitterFates > 0) {
     gainedFates += starglitterFates
     push({ source: 'Starglitter', primogems: 0, fates: starglitterFates })
   }
 
   const totalPrimos = currentPrimos + gainedPrimos
-  const totalFates = currentFates + Math.floor(totalPrimos / r.primoPerFate) + gainedFates
+  const totalFates = currentFates + Math.floor(totalPrimos / GAME_RULES.primogemsPerFate) + gainedFates
   const totalPulls = withStarglitterRefund(Math.floor(totalFates), config, push)
 
   return {
@@ -452,9 +453,9 @@ export function runProjection(input: EngineInput): ForecastResult {
   const r = config.recurring
 
   const targetPatch = patches.find((p) => p.id === target.patchId)
-  if (!targetPatch) return emptyResult(target.pullsNeeded, player, config)
+  if (!targetPatch) return emptyResult(target.pullsNeeded, player)
   const targetPhase = targetPatch.phases.find((p) => p.phase === target.phase)
-  if (!targetPhase) return emptyResult(target.pullsNeeded, player, config)
+  if (!targetPhase) return emptyResult(target.pullsNeeded, player)
 
   const phaseStart = parseISO(targetPhase.startDate)
   const phaseEnd = addDays(phaseStart, r.bannerDurationDays)
@@ -481,18 +482,11 @@ export function runProjection(input: EngineInput): ForecastResult {
 
   const pityAtTarget = player.characterBannerPity
   const guaranteedAtTarget = player.characterBannerGuaranteed
-  const pullsToPity = config.hardPityCharacter - pityAtTarget
+  const hardPity = GAME_RULES.hardPity.character
+  const pullsToPity = hardPity - pityAtTarget
 
   // Worst case: pulls needed to guarantee THIS character (doubles if on 50/50, since you might lose it)
-  const pullsForGuarantee = config.strictGuarantee && !guaranteedAtTarget
-    ? pullsToPity + config.hardPityCharacter
-    : pullsToPity
-
-  // Same idea, but using soft pity as the per-copy cost instead of hard pity.
-  const pullsToSoftPity = Math.max(0, config.softPityCharacter - pityAtTarget)
-  const pullsForGuaranteeSoftPity = config.strictGuarantee && !guaranteedAtTarget
-    ? pullsToSoftPity + config.softPityCharacter
-    : pullsToSoftPity
+  const pullsForGuarantee = guaranteedAtTarget ? pullsToPity : pullsToPity + hardPity
 
   return {
     atStart,
@@ -505,15 +499,11 @@ export function runProjection(input: EngineInput): ForecastResult {
     pullsForGuarantee,
     canGuaranteeAtStart: atStart.totalPulls >= pullsForGuarantee,
     canGuaranteeAtEnd: atEnd.totalPulls >= pullsForGuarantee,
-    pullsToSoftPity,
-    pullsForGuaranteeSoftPity,
-    canGuaranteeAtStartSoftPity: atStart.totalPulls >= pullsForGuaranteeSoftPity,
-    canGuaranteeAtEndSoftPity: atEnd.totalPulls >= pullsForGuaranteeSoftPity,
   }
 }
 
-function emptyResult(pullsNeeded: number, player: PlayerState, config: ProjectionConfig): ForecastResult {
-  const currentPulls = Math.floor((player.primogems + player.genesisCrystals) / 160) + player.intertwinedFates
+function emptyResult(pullsNeeded: number, player: PlayerState): ForecastResult {
+  const currentPulls = Math.floor((player.primogems + player.genesisCrystals) / GAME_RULES.primogemsPerFate) + player.intertwinedFates
   const empty: ForecastSnapshot = {
     cutoffDate: '',
     daysToTarget: 0,
@@ -528,15 +518,11 @@ function emptyResult(pullsNeeded: number, player: PlayerState, config: Projectio
     deltaAtEnd: emptyDelta,
     pityAtTarget: player.characterBannerPity,
     guaranteedAtTarget: player.characterBannerGuaranteed,
-    pullsToPity: config.hardPityCharacter - player.characterBannerPity,
+    pullsToPity: GAME_RULES.hardPity.character - player.characterBannerPity,
     pullsNeeded,
     pullsForGuarantee: 0,
     canGuaranteeAtStart: false,
     canGuaranteeAtEnd: false,
-    pullsToSoftPity: 0,
-    pullsForGuaranteeSoftPity: 0,
-    canGuaranteeAtStartSoftPity: false,
-    canGuaranteeAtEndSoftPity: false,
   }
 }
 
@@ -573,10 +559,8 @@ function bannerPityState(player: PlayerState, type: WishBannerType): ChainPitySt
   return { pity: player.characterBannerPity, guaranteed: player.characterBannerGuaranteed, fatePoints: 0 }
 }
 
-function bannerHardPity(config: ProjectionConfig, type: WishBannerType): number {
-  if (type === 'weapon') return config.hardPityWeapon
-  if (type === 'chronicled') return config.hardPityChronicle
-  return config.hardPityCharacter
+function bannerHardPity(type: WishBannerType): number {
+  return GAME_RULES.hardPity[type]
 }
 
 // A roadmap stop spends only at a meaningful 5-star milestone. This prevents
@@ -584,12 +568,11 @@ function bannerHardPity(config: ProjectionConfig, type: WishBannerType): number 
 // the player has enough to reach the next 5-star (for example, 117 available
 // with an 80-pull hard pity spends 80 and carries 37).
 function bannerThresholds(
-  config: ProjectionConfig,
   type: WishBannerType,
   copies: number,
   state: ChainPityState,
 ): { nextFiveStar: number; targetGuarantee: number } {
-  const hard = bannerHardPity(config, type)
+  const hard = bannerHardPity(type)
   const nextFiveStar = Math.max(1, hard - state.pity)
   const nextFeatured = state.guaranteed || ((type === 'weapon' || type === 'chronicled') && state.fatePoints > 0)
     ? nextFiveStar
@@ -602,12 +585,11 @@ function bannerThresholds(
 }
 
 function applyChainSpend(
-  config: ProjectionConfig,
   type: WishBannerType,
   state: ChainPityState,
   spend: number,
 ): ChainPityState {
-  const hard = bannerHardPity(config, type)
+  const hard = bannerHardPity(type)
   const pity = state.pity
   let guaranteed = state.guaranteed
   let fatePoints = state.fatePoints
@@ -681,7 +663,7 @@ export function runChain(input: {
     const type = bannerTypeFor(stop)
     const copies = bannerCopiesFor(stop)
     const stateBefore = { ...pityCarry[type] }
-    const thresholds = bannerThresholds(config, type, copies, stateBefore)
+    const thresholds = bannerThresholds(type, copies, stateBefore)
 
     const snapStart = computeRoadmapSnapshot(player, config, patches, phaseDate, today, false)
     const snapEnd = computeRoadmapSnapshot(player, config, patches, phaseEnd, today)
@@ -701,7 +683,7 @@ export function runChain(input: {
 
     if (canAfford) {
       deficit += actualSpend
-      pityCarry[type] = applyChainSpend(config, type, stateBefore, actualSpend)
+      pityCarry[type] = applyChainSpend(type, stateBefore, actualSpend)
     }
 
     const stateAfter = { ...pityCarry[type] }

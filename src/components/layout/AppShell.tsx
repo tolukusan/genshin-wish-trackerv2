@@ -11,6 +11,7 @@ const DataEntry = lazy(() => import('@/pages/DataEntry').then((m) => ({ default:
 const Patches = lazy(() => import('@/pages/Patches').then((m) => ({ default: m.Patches })))
 const Roadmap = lazy(() => import('@/pages/Roadmap').then((m) => ({ default: m.Roadmap })))
 const Settings = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.Settings })))
+const Guide = lazy(() => import('@/pages/Guide').then((m) => ({ default: m.Guide })))
 
 function PageLoading() {
   return <div className="p-6 text-sm text-slate-500" role="status">Loading…</div>
@@ -34,6 +35,7 @@ export function AppShell() {
           {nav === 'patches' && <Patches />}
           {nav === 'roadmap' && <Roadmap />}
           {nav === 'settings' && <Settings />}
+          {nav === 'guide' && <Guide />}
         </Suspense>
       </main>
 

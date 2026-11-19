@@ -4,6 +4,9 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { NumberInput } from '@/components/ui/NumberInput'
 import { format, parseISO } from 'date-fns'
 import { formatChance } from '@/engine/probability'
+import { InfoTip } from '@/components/ui/InfoTip'
+import { GAME_RULES } from '@/engine/gameRules'
+import { isSelectableBanner } from '@/utils/banners'
 import type { ChainStopResult, WishBannerType } from '@/types'
 
 type Tier = 'safe' | 'partial' | 'none'
@@ -29,7 +32,6 @@ function getPityStates(
 function outcomeFor(
   result: ChainStopResult | undefined,
   state: PityState,
-  config: ReturnType<typeof usePlannerStore.getState>['config'],
 ): {
   tier: Tier
   title: string
@@ -37,9 +39,7 @@ function outcomeFor(
   pullsToNextFiveStar: number
   pullsToGuaranteeFeatured: number
 } {
-  const hardPity = state.bannerType === 'weapon'
-    ? config.hardPityWeapon
-    : state.bannerType === 'chronicled' ? config.hardPityChronicle : config.hardPityCharacter
+  const hardPity = GAME_RULES.hardPity[state.bannerType]
   const pullsToNextFiveStar = Math.max(0, hardPity - state.pity)
   const pullsToGuaranteeFeatured = state.guaranteed || ((state.bannerType === 'weapon' || state.bannerType === 'chronicled') && state.fatePoints > 0)
     ? pullsToNextFiveStar
@@ -82,10 +82,14 @@ function outcomeFor(
       tier: 'partial',
       title: state.guaranteed || ((state.bannerType === 'weapon' || state.bannerType === 'chronicled') && state.fatePoints > 0)
         ? 'Featured item guaranteed ✓'
-        : 'You can reach a 5★, but it is 50/50',
+        : state.bannerType === 'character'
+          ? 'You can reach a 5★, but it is 50/50'
+          : 'You can reach a 5★, but it may not be your chosen item',
         detail: state.guaranteed || ((state.bannerType === 'weapon' || state.bannerType === 'chronicled') && state.fatePoints > 0)
         ? `Your plan reaches the next 5★ while your featured guarantee is active.`
-        : `Your plan reaches one 5★, but does not cover a lost 50/50 plus the guaranteed 5★ after it.`,
+        : state.bannerType === 'character'
+          ? `Your plan reaches one 5★, but does not cover a lost 50/50 plus the guaranteed 5★ after it.`
+          : `Your plan reaches one 5★, but does not cover an off-target 5★ plus the Fate Point-guaranteed one after it.`,
       pullsToNextFiveStar,
       pullsToGuaranteeFeatured: targetGuarantee,
     }
@@ -116,9 +120,9 @@ export function Roadmap() {
 
   const results = chain.length > 0 ? runChain({ player, config, patches, chain }) : []
   const bridge = getRoadmapBridge({ player, config, patches })
-  const currentPulls = Math.floor((player.primogems + player.genesisCrystals) / config.recurring.primoPerFate)
+  const currentPulls = Math.floor((player.primogems + player.genesisCrystals) / GAME_RULES.primogemsPerFate)
     + player.intertwinedFates
-    + Math.floor(player.starglitter / config.recurring.starglitterPerFate)
+    + Math.floor(player.starglitter / GAME_RULES.starglitterPerFate)
   const bridgeRewards = bridge ? Math.max(0, bridge.totalPulls - currentPulls) : 0
   const pityStates = getPityStates(results)
 
@@ -201,8 +205,7 @@ export function Roadmap() {
             fatePoints: player.weaponBannerFatePoints,
             bannerType: 'character' as const,
           }
-          const outcome = outcomeFor(result, state, config)
-          const shortBy = result ? Math.max(0, outcome.pullsToNextFiveStar - result.availableAtEnd) : 0
+          const outcome = outcomeFor(result, state)
           const selectedPatch = patches.find((patch) => patch.id === stop.patchId)
           const selectedPhase = selectedPatch?.phases.find((phase) => phase.phase === stop.phase)
           const selectedBannerLabel = selectedPatch
@@ -328,7 +331,7 @@ export function Roadmap() {
                     }}
                   >
                     {patches.map((p) =>
-                      p.phases.map((ph2) => (
+                      p.phases.filter((ph2) => isSelectableBanner(ph2.endDate, stop.patchId === p.id && stop.phase === ph2.phase)).map((ph2) => (
                         <option key={`${p.id}:${ph2.phase}`} value={`${p.id}:${ph2.phase}`}>
                           v{p.version} Phase {ph2.phase}
                           {ph2.featuredCharacters[0] ? ` — ${ph2.featuredCharacters[0]}` : ''}
@@ -342,15 +345,18 @@ export function Roadmap() {
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <label className="label">Wish Banner</label>
-                  <div className="input-base font-medium">
+                <p className="text-xs text-slate-600 flex items-center">
+                  <span
+                    className="rounded-full px-2 py-0.5 font-medium"
+                    style={{ background: 'rgba(124,58,237,0.1)', color: '#6d28d9' }}
+                  >
                     {stop.bannerType === 'weapon'
-                      ? 'Weapon Event'
-                      : stop.bannerType === 'chronicled' ? 'Chronicled Wish' : 'Character Event'}
-                  </div>
-                  <p className="text-xs text-slate-500">This is a separate banner plan.</p>
-                </div>
+                      ? 'Weapon banner'
+                      : stop.bannerType === 'chronicled' ? 'Chronicled Wish' : 'Character banner'}
+                  </span>
+                  <span className="ml-2 text-slate-500">own pity</span>
+                  <InfoTip topic={stop.bannerType === 'weapon' || stop.bannerType === 'chronicled' ? 'fate-points' : 'fifty-fifty'} />
+                </p>
                 <div className="print-hide">
                   <NumberInput
                     label={stop.bannerType === 'character' || !stop.bannerType ? 'Copies Wanted' : '5★ Items Wanted'}
@@ -382,7 +388,7 @@ export function Roadmap() {
                     <span className="text-slate-900 font-semibold">{availableAtEnd} pulls</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Entering banner</span>
+                    <span className="text-slate-500">Pity going in<InfoTip topic="pity" /></span>
                     <span className="text-slate-700 font-medium">
                       {state.pity} pity · {(state.bannerType === 'weapon' || state.bannerType === 'chronicled')
                         ? `${state.fatePoints} Fate Point${state.fatePoints === 1 ? '' : 's'}`
@@ -392,36 +398,27 @@ export function Roadmap() {
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
-                  <div className="label mb-2">What You Need</div>
+                  <div className="label mb-2">What You Need<InfoTip topic="guarantee-vs-chance" /></div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-500">Next 5★ worst case</span>
+                    <span className="text-slate-500">To reach a 5★ (worst case)</span>
                     <span className="text-slate-900 font-semibold">{outcome.pullsToNextFiveStar}</span>
                   </div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-500">Featured guarantee</span>
+                    <span className="text-slate-500">To guarantee it (worst case)</span>
                     <span className="text-slate-900 font-semibold">{outcome.pullsToGuaranteeFeatured}</span>
                   </div>
                   {result && (
-                    <div className="flex justify-between text-xs mb-1" title="Chance of getting every copy you want if all pulls available by banner end go into this banner (published rates + community soft-pity model).">
+                    <div className="flex justify-between text-xs">
                       <span className="text-slate-500">Chance if you go all-in</span>
                       <span className="font-semibold" style={{ color: chanceColor(result.successChance) }}>
                         {formatChance(result.successChance)}
                       </span>
                     </div>
                   )}
-                  <div className="text-xs text-slate-500 mt-1">
-                    {availableAtEnd >= outcome.pullsToGuaranteeFeatured
-                      ? 'Your total resources can guarantee the featured character.'
-                      : `Your resources are ${outcome.pullsToGuaranteeFeatured - availableAtEnd} short of a worst-case featured guarantee.`}
-                  </div>
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
-                  <div className="label mb-2">Your Plan</div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-500">Target milestone</span>
-                    <span className="text-slate-900 font-semibold">{result?.pullsToSpend ?? '—'}</span>
-                  </div>
+                  <div className="label mb-2">Your Plan<InfoTip topic="roadmap" /></div>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-slate-500">Planner spends</span>
                     <span className="text-slate-900 font-semibold">{result?.actualSpend ?? 0}</span>
@@ -430,11 +427,6 @@ export function Roadmap() {
                     <span className="text-slate-500">Carries forward</span>
                     <span className="font-semibold" style={{ color: '#059669' }}>{remainingAfter}</span>
                   </div>
-                  {shortBy > 0 && (
-                    <div className="text-xs mt-1" style={{ color: '#dc2626' }}>
-                      Short by {shortBy}; pulls remain banked until the next pity milestone is reachable.
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -489,7 +481,7 @@ export function Roadmap() {
                     fatePoints: player.weaponBannerFatePoints,
                     bannerType: 'character' as const,
                   }
-                  const outcome = outcomeFor(r, state, config)
+                  const outcome = outcomeFor(r, state)
                   return (
                     <tr key={r.stop.id} style={{ borderBottom: '1px solid rgba(226,232,240,0.6)' }}>
                       <td style={{ padding: '0.5rem 0.75rem', color: '#64748b' }}>{i + 1}</td>

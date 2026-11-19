@@ -2,6 +2,10 @@ import { useEffect } from 'react'
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { runProjection, buildTimeline } from '@/engine/projectionEngine'
 import { bannerOdds, chanceOfSuccess, formatChance } from '@/engine/probability'
+import { InfoTip } from '@/components/ui/InfoTip'
+import { GettingStarted } from '@/components/ui/GettingStarted'
+import { isSelectableBanner } from '@/utils/banners'
+import { GAME_RULES } from '@/engine/gameRules'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { NumberInput } from '@/components/ui/NumberInput'
 import {
@@ -25,6 +29,22 @@ function NeedLine({ label, need, blocker = false }: { label: string; need: numbe
   )
 }
 
+interface NeedTotals {
+  pullsToPity: number
+  pullsForGuarantee: number
+}
+
+// Worst-case "need" lines; the chance figure above covers typical luck.
+function NeedSummary({ pulls, need, copyWord }: { pulls: number; need: NeedTotals; copyWord: string }) {
+  const short = (total: number) => Math.max(0, total - pulls)
+  return (
+    <div className="flex flex-col gap-1">
+      <NeedLine label="To reach a 5★ (worst case)" need={short(need.pullsToPity)} blocker />
+      <NeedLine label={`To guarantee ${copyWord} (worst case)`} need={short(need.pullsForGuarantee)} />
+    </div>
+  )
+}
+
 // Chance of success for the whole pull budget, colored by how likely it is.
 function ChanceLine({ label, p }: { label: string; p: number }) {
   const color = p >= 0.9 ? '#059669' : p >= 0.5 ? '#b45309' : '#dc2626'
@@ -33,7 +53,7 @@ function ChanceLine({ label, p }: { label: string; p: number }) {
       className="flex items-center justify-between text-sm"
       title="Uses the published rates plus the community soft-pity model; the 50/50 is treated as exactly 50% (Capturing Radiance is not modelled)."
     >
-      <span className="text-slate-600">{label}</span>
+      <span className="text-slate-600">{label}<InfoTip topic="guarantee-vs-chance" /></span>
       <span style={{ color, fontWeight: 700 }}>{formatChance(p)}</span>
     </div>
   )
@@ -56,7 +76,7 @@ function findNextPhase(patches: Patch[], today: Date) {
 export function NextCharacter() {
   const { player, config, patches, target, setTarget } = usePlannerStore()
 
-  const pityBasedPullsNeeded = config.hardPityCharacter - player.characterBannerPity
+  const pityBasedPullsNeeded = GAME_RULES.hardPity.character - player.characterBannerPity
   const copies = target?.copies ?? 1
 
   // Default to the next upcoming banner phase the first time this view is opened.
@@ -97,10 +117,8 @@ export function NextCharacter() {
   // fresh cycle (pity resets to 0 after each 5-star, regardless of the outcome).
   const extraCopies = copies - 1
   const scaled = forecast ? {
-    pullsToPity: forecast.pullsToPity + extraCopies * config.hardPityCharacter,
-    pullsForGuarantee: forecast.pullsForGuarantee + extraCopies * 2 * config.hardPityCharacter,
-    pullsToSoftPity: forecast.pullsToSoftPity + extraCopies * config.softPityCharacter,
-    pullsForGuaranteeSoftPity: forecast.pullsForGuaranteeSoftPity + extraCopies * 2 * config.softPityCharacter,
+    pullsToPity: forecast.pullsToPity + extraCopies * GAME_RULES.hardPity.character,
+    pullsForGuarantee: forecast.pullsForGuarantee + extraCopies * 2 * GAME_RULES.hardPity.character,
   } : null
   const copyWord = copies > 1 ? `${copies} copies` : 'a character'
 
@@ -122,13 +140,16 @@ export function NextCharacter() {
         <p className="text-sm text-slate-500 mt-0.5">Your pull projection toward the next banner you're saving for.</p>
       </div>
 
+      <GettingStarted />
+
       {/* Target selector */}
       <section className="card p-5">
         <SectionHeader title="Target Banner" sub="Defaults to the next upcoming banner — change it to check a further-out one" />
         <div className="grid sm:grid-cols-3 gap-4">
           <div className="flex flex-col gap-1">
-            <label className="label">Patch & Phase</label>
+            <label className="label" htmlFor="target-banner">Patch & Phase<InfoTip topic="banner-labels" /></label>
             <select
+              id="target-banner"
               className="input-base"
               value={target ? `${target.patchId}:${target.phase}` : ''}
               onChange={(e) => {
@@ -148,7 +169,7 @@ export function NextCharacter() {
             >
               <option value="">— Select banner —</option>
               {patches.map((p) =>
-                p.phases.map((ph) => (
+                p.phases.filter((ph) => isSelectableBanner(ph.endDate, target?.patchId === p.id && target?.phase === ph.phase)).map((ph) => (
                   <option key={`${p.id}:${ph.phase}`} value={`${p.id}:${ph.phase}`}>
                     v{p.version} Phase {ph.phase} — {format(parseISO(ph.startDate), 'MMM d, yyyy')}
                     {ph.featuredCharacters[0] ? ` · ${ph.featuredCharacters[0]}` : ''}
@@ -168,20 +189,13 @@ export function NextCharacter() {
           />
 
           <div className="flex flex-col gap-1">
-            <label className="label">Pulls Needed</label>
-            <div style={{
-              padding: '0.45rem 0.75rem',
-              borderRadius: '0.5rem',
-              border: '1px solid rgba(203,213,225,0.9)',
-              background: 'rgba(241,245,249,0.8)',
-              color: '#6d28d9',
-              fontWeight: 700,
-              fontSize: '1.05rem',
-            }}>
-              {pityBasedPullsNeeded + (copies - 1) * config.hardPityCharacter}
-            </div>
+            <span className="label">Pulls to a 5★ (worst case)<InfoTip topic="pity" /></span>
+            <p style={{ color: '#6d28d9', fontWeight: 700, fontSize: '1.5rem', lineHeight: 1.2 }}>
+              {pityBasedPullsNeeded + (copies - 1) * GAME_RULES.hardPity.character}
+            </p>
             <p className="text-xs text-slate-500">
-              {player.characterBannerPity} pity in · next 5★ is {player.characterBannerGuaranteed ? 'Guaranteed' : 'on 50/50'}
+              {player.characterBannerPity} pity in · next 5★ is {player.characterBannerGuaranteed ? 'guaranteed featured' : 'on 50/50'}
+              <InfoTip topic="fifty-fifty" />
             </p>
           </div>
         </div>
@@ -214,25 +228,7 @@ export function NextCharacter() {
                 {forecast.atStart.totalPulls}
               </p>
               {chance && <ChanceLine label={`Chance of ${copyWord} if you pull at the start`} p={chance.atStart} />}
-              <div className="flex flex-col gap-1">
-                <NeedLine
-                  label={`For ${copyWord}`}
-                  need={Math.max(0, scaled!.pullsToPity - forecast.atStart.totalPulls)}
-                  blocker
-                />
-                <NeedLine
-                  label={`To guarantee ${copyWord}`}
-                  need={Math.max(0, scaled!.pullsForGuarantee - forecast.atStart.totalPulls)}
-                />
-                <NeedLine
-                  label="To reach soft pity"
-                  need={Math.max(0, scaled!.pullsToSoftPity - forecast.atStart.totalPulls)}
-                />
-                <NeedLine
-                  label="To guarantee (soft pity)"
-                  need={Math.max(0, scaled!.pullsForGuaranteeSoftPity - forecast.atStart.totalPulls)}
-                />
-              </div>
+              <NeedSummary pulls={forecast.atStart.totalPulls} need={scaled!} copyWord={copyWord} />
             </div>
 
             {/* At banner end */}
@@ -251,25 +247,7 @@ export function NextCharacter() {
                 {forecast.atEnd.totalPulls}
               </p>
               {chance && <ChanceLine label={`Chance of ${copyWord} by banner end`} p={chance.atEnd} />}
-              <div className="flex flex-col gap-1">
-                <NeedLine
-                  label={`For ${copyWord}`}
-                  need={Math.max(0, scaled!.pullsToPity - forecast.atEnd.totalPulls)}
-                  blocker
-                />
-                <NeedLine
-                  label={`To guarantee ${copyWord}`}
-                  need={Math.max(0, scaled!.pullsForGuarantee - forecast.atEnd.totalPulls)}
-                />
-                <NeedLine
-                  label="To reach soft pity"
-                  need={Math.max(0, scaled!.pullsToSoftPity - forecast.atEnd.totalPulls)}
-                />
-                <NeedLine
-                  label="To guarantee (soft pity)"
-                  need={Math.max(0, scaled!.pullsForGuaranteeSoftPity - forecast.atEnd.totalPulls)}
-                />
-              </div>
+              <NeedSummary pulls={forecast.atEnd.totalPulls} need={scaled!} copyWord={copyWord} />
             </div>
           </div>
 

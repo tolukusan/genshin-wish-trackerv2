@@ -3,6 +3,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Toggle } from "@/components/ui/Toggle";
+import { InfoTip } from "@/components/ui/InfoTip";
+import { GAME_RULES } from "@/engine/gameRules";
 
 function totalCurrentPulls(
     primogems: number,
@@ -13,14 +15,14 @@ function totalCurrentPulls(
 }
 
 export function DataEntry() {
-    const { player, config, updatePlayer } = usePlannerStore();
+    const { player, updatePlayer } = usePlannerStore();
 
     const currentPulls = totalCurrentPulls(
         player.primogems,
         player.genesisCrystals,
         player.intertwinedFates,
     );
-    const pityLeft = config.hardPityCharacter - player.characterBannerPity;
+    const pityLeft = GAME_RULES.hardPity.character - player.characterBannerPity;
 
     return (
         <div className="max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in">
@@ -30,7 +32,11 @@ export function DataEntry() {
                 </h1>
                 <p className="text-sm text-slate-500 mt-0.5">
                     What you actually have right now — resources, pity, and active
-                    boosts. Everything here feeds both Next Character and Scenarios.
+                    boosts. Everything here feeds Next Character and the Roadmap.
+                    <InfoTip topic="how-projections-work" />
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                    Changes save automatically in this browser. Update these whenever your resources change.
                 </p>
             </div>
 
@@ -134,6 +140,7 @@ export function DataEntry() {
                     />
                     <NumberInput
                         label="Char. Banner Pity"
+                        hint="Pulls since your last 5★ (see Wish History)"
                         value={player.characterBannerPity}
                         onChange={(v) =>
                             updatePlayer({ characterBannerPity: v })
@@ -154,21 +161,21 @@ export function DataEntry() {
                         onChange={(v) => updatePlayer({ weaponBannerPity: v })}
                         max={79}
                     />
-                    <NumberInput
-                        label="Weapon Fate Points"
-                        value={player.weaponBannerFatePoints}
-                        onChange={(v) => updatePlayer({ weaponBannerFatePoints: v })}
-                        max={1}
-                    />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-300/40">
                     <Toggle
-                        label="Guaranteed (lost last 50/50)"
+                        label="Character: guaranteed (lost last 50/50)"
                         checked={player.characterBannerGuaranteed}
                         onChange={(v) =>
                             updatePlayer({ characterBannerGuaranteed: v })
                         }
+                    />
+                    <Toggle
+                        label="Weapon Fate Point (guaranteed)"
+                        hint="Next 5★ on the weapon banner is your chosen weapon (Epitomized Path)."
+                        checked={player.weaponBannerFatePoints > 0}
+                        onChange={(v) => updatePlayer({ weaponBannerFatePoints: v ? 1 : 0 })}
                     />
                     <Toggle
                         label="Chronicled Fate Point (guaranteed)"

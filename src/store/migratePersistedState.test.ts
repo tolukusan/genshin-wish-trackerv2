@@ -40,11 +40,37 @@ describe('migratePersistedState', () => {
   })
 
   it('fills in new settings for older saves without overriding saved ones', () => {
-    const out = migratePersistedState({ config: { strictGuarantee: false, recurring: {} } })
-    expect(out.config.fiftyFiftyWinPercent).toBe(55)
+    const out = migratePersistedState({ config: { fiftyFiftyWinPercent: 59, recurring: {} } })
+    expect(out.config.fiftyFiftyWinPercent).toBe(59)
     expect(out.config.starglitterRefundIncluded).toBe(false)
     expect(out.config.recurring.starglitterRefundPercent).toBe(10)
-    expect(out.config.strictGuarantee).toBe(false)
+  })
+
+  it('moves the old trial default (20/phase) to 40 but keeps custom values', () => {
+    expect(migratePersistedState({ config: { recurring: { trialPrimosPerPhase: 20 } } }).config.recurring.trialPrimosPerPhase).toBe(40)
+    expect(migratePersistedState({ config: { recurring: { trialPrimosPerPhase: 30 } } }).config.recurring.trialPrimosPerPhase).toBe(30)
+    expect(migratePersistedState({ config: { recurring: {} } }).config.recurring.trialPrimosPerPhase).toBe(40)
+  })
+
+  it('drops settings that became fixed game rules (custom pity, strict guarantee, currency rates)', () => {
+    const out = migratePersistedState({
+      config: {
+        strictGuarantee: false, softPityCharacter: 80, hardPityCharacter: 85, softPityWeapon: 70,
+        hardPityWeapon: 80, softPityChronicle: 80, hardPityChronicle: 90, commissionsIncluded: false,
+        recurring: { primoPerFate: 150, starglitterPerFate: 4, battlePassPaidPrimos: 700, battlePassPaidFates: 5, dailyCommissions: 55 },
+      },
+    })
+    const config = out.config as unknown as Record<string, unknown>
+    const recurring = out.config.recurring as unknown as Record<string, unknown>
+    for (const key of ['strictGuarantee', 'softPityCharacter', 'hardPityCharacter', 'softPityWeapon', 'hardPityWeapon', 'softPityChronicle', 'hardPityChronicle']) {
+      expect(key in config).toBe(false)
+    }
+    for (const key of ['primoPerFate', 'starglitterPerFate', 'battlePassPaidPrimos', 'battlePassPaidFates']) {
+      expect(key in recurring).toBe(false)
+    }
+    // Real preferences survive.
+    expect(out.config.commissionsIncluded).toBe(false)
+    expect(out.config.recurring.dailyCommissions).toBe(55)
   })
 
   it('passes through non-object input unchanged', () => {
