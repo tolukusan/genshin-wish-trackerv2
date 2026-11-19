@@ -44,6 +44,7 @@ export interface RecurringConfig {
   patchAnchorDate: string        // ISO date
   primoPerFate: number           // always 160
   starglitterPerFate: number     // starglitter needed per fate
+  starglitterRefundPercent: number // estimated extra pulls refunded as starglitter, % of pulls (when enabled)
   maintenancePrimos: number      // patch maintenance reward, applied to every patch
   livestreamPrimos: number      // livestream code reward, applied to every patch
   patchTypeRewards: Record<PatchType, number> // base EVENT-ONLY reward by content type (primos), used by Next Character
@@ -75,6 +76,8 @@ export interface ProjectionConfig extends IncomeToggles {
   softPityWeapon: number
   hardPityWeapon: number
   strictGuarantee: boolean
+  fiftyFiftyWinPercent: number      // chance (%) to win the character 50/50; only affects chance of success
+  starglitterRefundIncluded: boolean // add estimated starglitter refunds to projected pulls
 }
 
 // ── Patches & Banners ─────────────────────────────────────────────────────────

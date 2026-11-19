@@ -32,6 +32,21 @@ describe('migratePersistedState', () => {
     expect(kept.player.chronicleBannerFatePoints).toBe(1)
   })
 
+  it('moves the old sub-area default (78) to 84 but keeps custom values', () => {
+    const old = migratePersistedState({ config: { recurring: { patchTypeTotalWishes: { standard: 67, 'sub-area': 78, 'new-region': 102 } } } })
+    expect(old.config.recurring.patchTypeTotalWishes['sub-area']).toBe(84)
+    const custom = migratePersistedState({ config: { recurring: { patchTypeTotalWishes: { standard: 67, 'sub-area': 90, 'new-region': 102 } } } })
+    expect(custom.config.recurring.patchTypeTotalWishes['sub-area']).toBe(90)
+  })
+
+  it('fills in new settings for older saves without overriding saved ones', () => {
+    const out = migratePersistedState({ config: { strictGuarantee: false, recurring: {} } })
+    expect(out.config.fiftyFiftyWinPercent).toBe(55)
+    expect(out.config.starglitterRefundIncluded).toBe(false)
+    expect(out.config.recurring.starglitterRefundPercent).toBe(10)
+    expect(out.config.strictGuarantee).toBe(false)
+  })
+
   it('passes through non-object input unchanged', () => {
     expect(migratePersistedState(null)).toBe(null)
     expect(migratePersistedState('x')).toBe('x')

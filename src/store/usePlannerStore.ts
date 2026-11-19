@@ -36,6 +36,7 @@ const defaultRecurring: RecurringConfig = {
     patchAnchorDate: "2026-05-20",
     primoPerFate: 160,
     starglitterPerFate: 5,
+    starglitterRefundPercent: 10,
     maintenancePrimos: 600,
     livestreamPrimos: 300,
     // Base content only. Special rewards such as Anniversary and Lantern Rite
@@ -51,7 +52,7 @@ const defaultRecurring: RecurringConfig = {
     },
     patchTypeTotalWishes: {
         standard: 67,
-        "sub-area": 78,
+        "sub-area": 84,
         "new-region": 102,
     },
     patchModifierTotalWishes: {
@@ -79,6 +80,10 @@ const defaultConfig: ProjectionConfig = {
     softPityWeapon: 63,
     hardPityWeapon: 80,
     strictGuarantee: true,
+    // Capturing Radiance (5.0+) pushes the effective 50/50 above 50%; community
+    // data shows ~55-59%. 55 is a moderate default. Worst-case guarantees ignore it.
+    fiftyFiftyWinPercent: 55,
+    starglitterRefundIncluded: false,
 };
 
 const defaultPlayer: PlayerState = {
@@ -260,7 +265,11 @@ export function migratePersistedState(input: unknown): PlannerStore {
         },
         patchTypeTotalWishes: {
             standard: oldPatchTotals.standard ?? defaultRecurring.patchTypeTotalWishes.standard,
-            "sub-area": oldPatchTotals["sub-area"] ?? defaultRecurring.patchTypeTotalWishes["sub-area"],
+            // 78 was the pre-v14 default; recent sub-area patches average ~84
+            // (community F2P bookkeeping, 5.x–7.2). Custom values are kept.
+            "sub-area": oldPatchTotals["sub-area"] === 78
+                ? defaultRecurring.patchTypeTotalWishes["sub-area"]
+                : oldPatchTotals["sub-area"] ?? defaultRecurring.patchTypeTotalWishes["sub-area"],
             "new-region": oldPatchTotals["new-region"] === 128
                 ? defaultRecurring.patchTypeTotalWishes["new-region"]
                 : oldPatchTotals["new-region"] ?? defaultRecurring.patchTypeTotalWishes["new-region"],
@@ -628,7 +637,7 @@ export const usePlannerStore = create<PlannerStore>()(
         }),
         {
             name: "genshin-wish-projection",
-            version: 13,
+            version: 14,
             migrate: (persisted) => migratePersistedState(persisted),
         },
     ),

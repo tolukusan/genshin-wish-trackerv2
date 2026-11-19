@@ -24,6 +24,16 @@ describe('runProjection', () => {
     expect(commissions?.primogems).toBe(15 * 60)
   })
 
+  it('adds starglitter refunds only when enabled', () => {
+    const today = new Date('2026-12-01')
+    const off = runProjection({ player, config, patches, target, today })
+    const on = runProjection({ player, config: { ...config, starglitterRefundIncluded: true }, patches, target, today })
+    expect(off.atEnd.breakdown.some((b) => b.source.startsWith('Starglitter refunds'))).toBe(false)
+    expect(on.atEnd.totalPulls).toBe(off.atEnd.totalPulls + Math.floor(off.atEnd.totalPulls * 0.1))
+    expect(on.atEnd.breakdown.find((b) => b.source.startsWith('Starglitter refunds'))?.source)
+      .toBe('Starglitter refunds (est. 10%)')
+  })
+
   it('costs a fresh 50/50 at two hard pities under strict guarantee', () => {
     const r = runProjection({ player, config, patches, target, today: new Date('2026-12-01') })
     expect(r.pullsToPity).toBe(90)

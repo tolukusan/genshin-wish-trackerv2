@@ -6,8 +6,9 @@
 //   - Character / Chronicled: 0.6% base, +6% per pull from soft pity, 100% at hard pity.
 //   - Weapon:                 0.7% base, +7% per pull from soft pity, 100% at hard pity.
 // Featured chance on a 5-star (when not already guaranteed):
-//   - Character: 50%. Capturing Radiance (5.0+) is not modelled, so this is
-//     slightly pessimistic.
+//   - Character: the "50/50 win rate" setting (default 55%). Capturing Radiance
+//     (5.0+) lifts the effective rate above 50%; paimon.moe's global tally
+//     shows ~59% across ~77k users.
 //   - Weapon: 37.5% for the specific weapon (75% featured × 50% of the two).
 //   - Chronicled: 50% for the chosen item.
 // After an off-target 5-star the next 5-star is guaranteed (character
@@ -30,7 +31,9 @@ export function bannerOdds(config: ProjectionConfig, type: WishBannerType): Bann
   if (type === 'chronicled') {
     return { baseRate: 0.006, softPityStart: config.softPityChronicle, rateStep: 0.06, hardPity: config.hardPityChronicle, featuredChance: 0.5 }
   }
-  return { baseRate: 0.006, softPityStart: config.softPityCharacter, rateStep: 0.06, hardPity: config.hardPityCharacter, featuredChance: 0.5 }
+  const winPercent = config.fiftyFiftyWinPercent ?? 55
+  const featuredChance = Math.min(1, Math.max(0, winPercent / 100))
+  return { baseRate: 0.006, softPityStart: config.softPityCharacter, rateStep: 0.06, hardPity: config.hardPityCharacter, featuredChance }
 }
 
 // 5-star rate for the n-th pull since the last 5-star (n is 1-based).

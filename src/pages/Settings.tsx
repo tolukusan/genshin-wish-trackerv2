@@ -1,4 +1,4 @@
-import { usePlannerStore } from "@/store/usePlannerStore";
+import { usePlannerStore, migratePersistedState } from "@/store/usePlannerStore";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Toggle } from "@/components/ui/Toggle";
@@ -76,7 +76,10 @@ export function Settings() {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 try {
-                    const data = JSON.parse(ev.target?.result as string);
+                    const parsed: unknown = JSON.parse(ev.target?.result as string);
+                    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Not a planner export");
+                    // Exports from older versions are upgraded like browser-saved data.
+                    const data = migratePersistedState(parsed);
                     usePlannerStore.setState({
                         ...(data.player && { player: data.player }),
                         ...(data.config && { config: data.config }),
@@ -398,6 +401,23 @@ export function Settings() {
                         onChange={(v) => updateRecurring({ starglitterPerFate: v })}
                         hint="Standard is 5"
                     />
+                    <div className="sm:col-span-2">
+                        <Toggle
+                            label="Count starglitter refunds"
+                            hint="Adds an estimate of fates refunded from 4★/5★ duplicates to projected pulls. Off keeps projections conservative."
+                            checked={config.starglitterRefundIncluded ?? false}
+                            onChange={(v: boolean) => updateConfig({ starglitterRefundIncluded: v })}
+                        />
+                    </div>
+                    {config.starglitterRefundIncluded && (
+                        <NumberInput
+                            label="Starglitter Refund (%)"
+                            value={r.starglitterRefundPercent ?? 10}
+                            onChange={(v) => updateRecurring({ starglitterRefundPercent: v })}
+                            max={30}
+                            hint="Community estimate is ~10% for F2P accounts"
+                        />
+                    )}
                 </div>
             </section>
 
@@ -410,6 +430,16 @@ export function Settings() {
                             hint="Calculate 'Can Guarantee' using 180 pulls for 50/50 players."
                             checked={config.strictGuarantee}
                             onChange={(v: boolean) => updateConfig({ strictGuarantee: v })}
+                        />
+                    </div>
+                    <div className="sm:col-span-2">
+                        <NumberInput
+                            label="50/50 Win Rate (%)"
+                            value={config.fiftyFiftyWinPercent ?? 55}
+                            onChange={(v) => updateConfig({ fiftyFiftyWinPercent: v })}
+                            min={50}
+                            max={100}
+                            hint="Used only for chance of success. Capturing Radiance makes it ~55–59% in practice; worst-case guarantees still assume a loss."
                         />
                     </div>
                     <NumberInput

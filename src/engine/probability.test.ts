@@ -65,6 +65,23 @@ describe('chanceOfSuccess', () => {
   })
 })
 
+describe('50/50 win rate setting', () => {
+  it('raises the character chance but not weapon or chronicled odds', () => {
+    const at50 = chanceOfSuccess(bannerOdds(config, 'character'), fresh, 90)
+    const at55 = chanceOfSuccess(bannerOdds({ ...config, fiftyFiftyWinPercent: 55 }, 'character'), fresh, 90)
+    expect(at55).toBeGreaterThan(at50)
+    expect(bannerOdds({ ...config, fiftyFiftyWinPercent: 55 }, 'weapon').featuredChance).toBe(0.375)
+    expect(bannerOdds({ ...config, fiftyFiftyWinPercent: 55 }, 'chronicled').featuredChance).toBe(0.5)
+  })
+
+  it('clamps out-of-range values and defaults to 55% when missing', () => {
+    expect(bannerOdds({ ...config, fiftyFiftyWinPercent: 150 }, 'character').featuredChance).toBe(1)
+    const legacy = { ...config } as Partial<typeof config>
+    delete legacy.fiftyFiftyWinPercent
+    expect(bannerOdds(legacy as typeof config, 'character').featuredChance).toBe(0.55)
+  })
+})
+
 describe('formatChance', () => {
   it('formats edge cases', () => {
     expect(formatChance(0)).toBe('0%')

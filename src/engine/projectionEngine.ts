@@ -68,6 +68,20 @@ function countTrialPhases(patches: Patch[], cutoff: Date, today: Date): number {
   return count
 }
 
+// Optional estimate of starglitter refunded by spending pulls (4★/5★ duplicates).
+// Community F2P bookkeeping puts it at roughly +10% of pulls. Off by default.
+function withStarglitterRefund(
+  pulls: number,
+  config: ProjectionConfig,
+  push: (item: BreakdownItem) => void,
+): number {
+  if (!config.starglitterRefundIncluded || pulls <= 0) return pulls
+  const percent = Math.max(0, config.recurring.starglitterRefundPercent ?? 10)
+  const refund = Math.floor((pulls * percent) / 100)
+  if (refund > 0) push({ source: `Starglitter refunds (est. ${percent}%)`, primogems: 0, fates: refund })
+  return pulls + refund
+}
+
 // Compute a single snapshot to a given cutoff date.
 function computeSnapshot(
   player: PlayerState,
@@ -238,7 +252,7 @@ function computeSnapshot(
   // Totals (per spec: all primos summed first, then converted together)
   const totalPrimos = currentPrimos + gainedPrimos
   const totalFates = currentFates + Math.floor(totalPrimos / r.primoPerFate) + gainedFates
-  const totalPulls = Math.floor(totalFates)
+  const totalPulls = withStarglitterRefund(Math.floor(totalFates), config, push)
 
   return {
     cutoffDate: format(cutoff, 'yyyy-MM-dd'),
@@ -407,7 +421,7 @@ function computeRoadmapSnapshot(
 
   const totalPrimos = currentPrimos + gainedPrimos
   const totalFates = currentFates + Math.floor(totalPrimos / r.primoPerFate) + gainedFates
-  const totalPulls = Math.floor(totalFates)
+  const totalPulls = withStarglitterRefund(Math.floor(totalFates), config, push)
 
   return {
     cutoffDate: format(cutoff, 'yyyy-MM-dd'),
