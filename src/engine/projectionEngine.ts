@@ -1,4 +1,4 @@
-import { differenceInDays, parseISO, addDays, format } from 'date-fns'
+import { differenceInDays, parseISO, addDays, format, startOfDay } from 'date-fns'
 import type {
   PlayerState, ProjectionConfig, Patch, Target,
   ForecastResult, ForecastSnapshot, BreakdownItem,
@@ -423,7 +423,7 @@ export function getRoadmapBridge(input: {
   patches: Patch[]
   today?: Date
 }): ForecastSnapshot | null {
-  const today = input.today ?? new Date()
+  const today = startOfDay(input.today ?? new Date())
   const firstFuturePatch = input.patches
     .filter((patch) => parseISO(patch.startDate) > today)
     .sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime())[0]
@@ -433,7 +433,7 @@ export function getRoadmapBridge(input: {
 
 export function runProjection(input: EngineInput): ForecastResult {
   const { player, config, patches, target } = input
-  const today = input.today ?? new Date()
+  const today = startOfDay(input.today ?? new Date())
   const r = config.recurring
 
   const targetPatch = patches.find((p) => p.id === target.patchId)
@@ -601,8 +601,12 @@ function applyChainSpend(
   while (remaining >= hard) {
     remaining -= hard
     if (type === 'weapon' || type === 'chronicled') {
-      // One Fate Point guarantees the selected weapon on the next 5-star.
-      fatePoints = fatePoints > 0 ? 0 : 1
+      // One Fate Point (or the chronicled "guaranteed" flag) secures the chosen
+      // item on the next 5-star, which consumes it. Otherwise assume the worst
+      // case: the 5-star is off-target and earns a Fate Point.
+      const secured = guaranteed || fatePoints > 0
+      guaranteed = false
+      fatePoints = secured ? 0 : 1
     } else {
       guaranteed = !guaranteed
     }
@@ -619,7 +623,7 @@ export function runChain(input: {
   today?: Date
 }): ChainStopResult[] {
   const { player, config, patches, chain } = input
-  const today = input.today ?? new Date()
+  const today = startOfDay(input.today ?? new Date())
 
   const results: ChainStopResult[] = []
   let deficit = 0
@@ -707,7 +711,7 @@ export interface TimelinePoint {
 
 export function buildTimeline(input: EngineInput): TimelinePoint[] {
   const { player, config, patches, target } = input
-  const today = input.today ?? new Date()
+  const today = startOfDay(input.today ?? new Date())
   const r = config.recurring
 
   const targetPatch = patches.find((p) => p.id === target.patchId)
