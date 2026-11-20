@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { usePlannerStore } from "@/store/usePlannerStore";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfDay } from "date-fns";
 import type { PatchModifier, PatchType } from "@/types";
 
 const PATCH_TYPE_LABELS: Record<PatchType, string> = {
@@ -28,13 +28,18 @@ export function Patches() {
         setPatchType,
         togglePatchModifier,
     } = usePlannerStore();
+    const [showPast, setShowPast] = useState(false);
+    // Finished patches can't change the plan, so they start hidden.
+    const today = startOfDay(new Date());
+    const past = patches.filter((p) => parseISO(p.endDate) <= today);
+    const shown = showPast ? patches : patches.filter((p) => parseISO(p.endDate) > today);
 
     return (
-        <div className="max-w-4xl mx-auto flex flex-col gap-6 animate-fade-in">
+        <div className="max-w-4xl flex flex-col gap-6 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div>
                     <h1 className="text-xl font-semibold text-slate-900">
-                        Patches
+                        Patch guesses
                     </h1>
                     <p className="text-sm text-slate-500 mt-0.5">
                         Choose the base content level, then add any special reward bonuses that overlap.
@@ -102,91 +107,85 @@ export function Patches() {
                 </section>
             )}
 
-            <div className="card overflow-x-auto overscroll-x-contain">
-                <table className="w-full min-w-[760px] text-sm">
-                    <thead>
-                        <tr className="border-b border-slate-300/50 text-left">
-                            <th className="p-3 text-xs font-medium text-slate-500">Version</th>
-                            <th className="p-3 text-xs font-medium text-slate-500">Window</th>
-                            <th className="p-3 text-xs font-medium text-slate-500">Base Content<InfoTip topic="patch-types" /></th>
-                            <th className="p-3 text-xs font-medium text-slate-500">Special Bonuses</th>
-                            <th className="p-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {patches.map((patch) => (
-                            <tr key={patch.id} className="border-b border-slate-200/50 last:border-0 align-top">
-                                <td className="p-3 text-accent-purple font-semibold">
-                                    v{patch.version}
-                                </td>
-                                <td className="p-3 text-slate-700 whitespace-nowrap">
-                                    {format(parseISO(patch.startDate), "MMM d")} –{" "}
-                                    {format(parseISO(patch.endDate), "MMM d, yyyy")}
-                                </td>
-                                <td className="p-3">
-                                    <select
-                                        className="input-base text-xs min-w-32"
-                                        value={patch.patchType}
-                                        onChange={(e) =>
-                                            setPatchType(patch.id, e.target.value as PatchType)
-                                        }
+            {past.length > 0 && (
+                <button
+                    type="button"
+                    className="btn-ghost self-start"
+                    aria-expanded={showPast}
+                    onClick={() => setShowPast((v) => !v)}
+                >
+                    {showPast ? "Hide" : "Show"} {past.length} past patch{past.length === 1 ? "" : "es"}
+                </button>
+            )}
+
+            {/* A list rather than a table so it fits a phone without sideways scrolling. */}
+            <ul className="card flex flex-col" aria-label="Patches">
+                {shown.map((patch) => (
+                    <li
+                        key={patch.id}
+                        className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200/50 p-3 last:border-0"
+                    >
+                        <div className="flex min-w-[10rem] flex-1 items-baseline gap-3">
+                            <span className="font-semibold text-accent-purple">v{patch.version}</span>
+                            <span className="whitespace-nowrap text-sm text-slate-700">
+                                {format(parseISO(patch.startDate), "MMM d")} – {format(parseISO(patch.endDate), "MMM d, yyyy")}
+                            </span>
+                        </div>
+                        <label className="flex items-center gap-2">
+                            <span className="sr-only">Base content for v{patch.version}</span>
+                            <select
+                                className="input-base min-w-32 text-xs"
+                                value={patch.patchType}
+                                onChange={(e) => setPatchType(patch.id, e.target.value as PatchType)}
+                            >
+                                {(Object.keys(PATCH_TYPE_LABELS) as PatchType[]).map((t) => (
+                                    <option key={t} value={t}>
+                                        {PATCH_TYPE_LABELS[t]}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {(Object.keys(PATCH_MODIFIER_LABELS) as PatchModifier[]).map((modifier) => {
+                                const checked = (patch.modifiers ?? []).includes(modifier);
+                                return (
+                                    <label
+                                        key={modifier}
+                                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
+                                            checked
+                                                ? "border-violet-300 bg-violet-50 text-violet-700"
+                                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                        }`}
                                     >
-                                        {(Object.keys(PATCH_TYPE_LABELS) as PatchType[]).map((t) => (
-                                            <option key={t} value={t}>
-                                                {PATCH_TYPE_LABELS[t]}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </td>
-                                <td className="p-3">
-                                    <div className="flex flex-wrap gap-2">
-                                        {(Object.keys(PATCH_MODIFIER_LABELS) as PatchModifier[]).map((modifier) => {
-                                            const checked = (patch.modifiers ?? []).includes(modifier);
-                                            return (
-                                                <label
-                                                    key={modifier}
-                                                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs cursor-pointer transition-colors ${
-                                                        checked
-                                                            ? "border-violet-300 bg-violet-50 text-violet-700"
-                                                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                                                    }`}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        className="accent-violet-600"
-                                                        checked={checked}
-                                                        onChange={() => togglePatchModifier(patch.id, modifier)}
-                                                    />
-                                                    {PATCH_MODIFIER_LABELS[modifier]}
-                                                </label>
-                                            );
-                                        })}
-                                    </div>
-                                </td>
-                                <td className="p-3 text-right">
-                                    <button
-                                        onClick={() => {
-                                            // Deleting removes the patch from projections and any plans using it.
-                                            if (window.confirm(`Delete v${patch.version}? This cannot be undone.`)) deletePatch(patch.id)
-                                        }}
-                                        aria-label={`Delete patch v${patch.version}`}
-                                        className="btn-danger px-2 py-1 text-xs"
-                                    >
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                {patches.length === 0 && (
-                    <div className="p-8 text-center">
-                        <p className="text-slate-500 text-sm">
-                            No patches yet. Add one to get started.
-                        </p>
-                    </div>
+                                        <input
+                                            type="checkbox"
+                                            className="accent-[var(--color-accent)]"
+                                            checked={checked}
+                                            onChange={() => togglePatchModifier(patch.id, modifier)}
+                                        />
+                                        {PATCH_MODIFIER_LABELS[modifier]}
+                                    </label>
+                                );
+                            })}
+                        </div>
+                        <button
+                            onClick={() => {
+                                // Deleting removes the patch from projections and any plans using it.
+                                if (window.confirm(`Delete v${patch.version}? This cannot be undone.`)) deletePatch(patch.id)
+                            }}
+                            aria-label={`Delete patch v${patch.version}`}
+                            className="btn-danger ml-auto min-h-0 px-2 py-1 text-xs"
+                        >
+                            Delete
+                        </button>
+                    </li>
+                ))}
+                {shown.length === 0 && (
+                    <li className="p-8 text-center text-sm text-slate-500">
+                        {patches.length === 0 ? "No patches yet. Add one to get started." : "No upcoming patches. Add the next one above."}
+                    </li>
                 )}
-            </div>
+            </ul>
         </div>
     );
 }

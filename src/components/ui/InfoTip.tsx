@@ -69,7 +69,7 @@ export function InfoTip({ topic, label }: { topic: GuideTopicId; label?: string 
         onClick={() => { setPos(null); setOpen((v) => !v) }}
         style={{
           width: '1.1rem', height: '1.1rem', borderRadius: '9999px', marginLeft: '0.3rem',
-          border: '1px solid rgba(124,58,237,0.45)', color: '#6d28d9', background: 'rgba(124,58,237,0.06)',
+          border: '1px solid rgba(145,132,217,0.45)', color: 'var(--color-accent-300)', background: 'rgba(145,132,217,0.06)',
           fontSize: '0.7rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           textTransform: 'none', letterSpacing: 0,
@@ -87,22 +87,22 @@ export function InfoTip({ topic, label }: { topic: GuideTopicId; label?: string 
             position: 'fixed', zIndex: 70,
             left: pos?.left ?? 0, top: pos?.top ?? 0, width: pos?.width ?? POPOVER_WIDTH,
             visibility: pos ? 'visible' : 'hidden',
-            background: '#ffffff', border: '1px solid rgba(124,58,237,0.35)', borderRadius: '0.6rem',
-            boxShadow: '0 8px 24px rgba(15,23,42,0.15)', padding: '0.7rem 0.8rem',
+            background: 'var(--color-surface)', border: '1px solid rgba(145,132,217,0.35)', borderRadius: '0.6rem',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)', padding: '0.7rem 0.8rem',
             textAlign: 'left', fontWeight: 400, display: 'flex', flexDirection: 'column', gap: '0.45rem',
           }}
         >
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{t.title}</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>{t.title}</span>
           {Thumb && (
             <div style={{ pointerEvents: 'none' }} aria-hidden>
               <Thumb compact />
             </div>
           )}
-          <span style={{ fontSize: '0.78rem', color: '#334155', lineHeight: 1.45 }}>{t.summary}</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--color-neutral-200)', lineHeight: 1.45 }}>{t.summary}</span>
           <button
             type="button"
             onClick={() => { setOpen(false); openGuide(topic) }}
-            style={{ alignSelf: 'flex-start', fontSize: '0.75rem', color: '#6d28d9', fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            style={{ alignSelf: 'flex-start', fontSize: '0.75rem', color: 'var(--color-accent-300)', fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
           >
             Read more in the Guide →
           </button>

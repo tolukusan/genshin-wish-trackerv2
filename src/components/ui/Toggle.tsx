@@ -9,8 +9,8 @@ export function Toggle({ label, checked, onChange, hint }: ToggleProps) {
   return (
     <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', cursor: 'pointer' }}>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: '0.875rem', color: '#1e293b' }}>{label}</span>
-        {hint && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{hint}</span>}
+        <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{label}</span>
+        {hint && <span style={{ fontSize: '0.75rem', color: 'var(--color-neutral-400)' }}>{hint}</span>}
       </div>
       <button
         type="button"
@@ -25,7 +25,7 @@ export function Toggle({ label, checked, onChange, hint }: ToggleProps) {
           border: 'none',
           cursor: 'pointer',
           flexShrink: 0,
-          backgroundColor: checked ? '#7c3aed' : '#cbd5e1',
+          backgroundColor: checked ? 'var(--color-accent)' : 'var(--color-neutral-700)',
           transition: 'background-color 0.2s',
           outline: 'none',
         }}
@@ -38,7 +38,7 @@ export function Toggle({ label, checked, onChange, hint }: ToggleProps) {
             width: '16px',
             height: '16px',
             borderRadius: '9999px',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--color-neutral-100)',
             boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
             transition: 'transform 0.2s',
             transform: checked ? 'translateX(16px)' : 'translateX(0)',

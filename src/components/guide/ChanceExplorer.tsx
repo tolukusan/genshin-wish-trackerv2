@@ -14,7 +14,7 @@ export function ChanceExplorer({ compact = false }: { compact?: boolean }) {
   const currentPulls = Math.floor((player.primogems + player.genesisCrystals) / GAME_RULES.primogemsPerFate)
     + player.intertwinedFates + Math.floor(player.starglitter / GAME_RULES.starglitterPerFate)
 
-  // Prefilled from Data Entry; editing here does not change saved data.
+  // Prefilled from Wallet; editing here does not change saved data.
   const [pity, setPity] = useState(compact ? 0 : player.characterBannerPity)
   const [guaranteed, setGuaranteed] = useState(compact ? false : player.characterBannerGuaranteed)
   const [pulls, setPulls] = useState(compact ? 0 : currentPulls)
@@ -79,7 +79,7 @@ export function ChanceExplorer({ compact = false }: { compact?: boolean }) {
       <p className="text-xs text-slate-600">
         Half of players get {copyWord} by about <b style={{ color: VIZ.textPrimary }}>{typical}</b> pulls; the worst case
         (every 5★ at pull {hard}{guaranteed ? '' : ' and a lost 50/50'}) needs <b style={{ color: VIZ.textPrimary }}>{worstCase}</b>.
-        Uses your {config.fiftyFiftyWinPercent ?? 55}% 50/50 win rate. Prefilled from Data Entry; changes here are not saved.
+        Uses your {config.fiftyFiftyWinPercent ?? 55}% 50/50 win rate. Prefilled from Wallet; changes here are not saved.
       </p>
     </div>
   )
