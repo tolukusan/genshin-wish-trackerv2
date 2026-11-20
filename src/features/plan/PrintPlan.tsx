@@ -1,7 +1,7 @@
 import { format, parseISO } from 'date-fns'
 import { formatChance } from '@/engine/probability'
 import type { ChainStopResult } from '@/types'
-import { bannerTypeLabel, VERDICT_LABEL, verdictFor } from './planModel'
+import { bannerName, bannerTypeLabel, VERDICT_LABEL, verdictFor } from './planModel'
 
 interface PrintPlanProps {
   results: ChainStopResult[]
@@ -43,7 +43,7 @@ export function PrintPlan({ results, wallet, characterPity, today }: PrintPlanPr
                   v{r.patchVersion} Phase {r.stop.phase}
                   <br />
                   {format(parseISO(r.phaseDate), 'MMM d')}–{format(parseISO(r.phaseEndDate), 'MMM d, yyyy')}
-                  {r.stop.label ? <><br />{r.stop.label}</> : null}
+                  {bannerName(r) ? <><br />{bannerName(r)}</> : null}
                 </td>
                 <td className={cell}>{bannerTypeLabel(r.bannerType, r.copies)}</td>
                 <td className={cell}>{r.availableAtEnd}</td>

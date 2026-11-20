@@ -8,7 +8,7 @@ import { usePlannerStore } from '@/store/usePlannerStore'
 import { isSelectableBanner } from '@/utils/banners'
 import type { ChainStopResult, WishBannerType } from '@/types'
 import { VerdictTag } from './BannerCard'
-import { bannerTypeLabel, incomeBuckets, typicalPulls, verdictFor } from './planModel'
+import { bannerName, bannerTypeLabel, featuredText, incomeBuckets, pullLedger, typicalPulls, verdictFor, worstCaseSteps, type SumRow } from './planModel'
 import { useModalFocus } from './useModalFocus'
 
 const BUCKET_SHADES = ['var(--color-accent-400)', 'var(--color-accent-600)', 'var(--color-accent-700)', 'var(--color-accent-800)']
@@ -25,11 +25,43 @@ function stateChip(r: ChainStopResult): string {
 
 interface BannerSheetProps {
   result: ChainStopResult
+  /** Pulls in the wallet today. */
+  wallet: number
+  /** The earlier banner of the same kind whose spending set this one's starting pity. */
+  pitySource: ChainStopResult | null
   onClose: () => void
 }
 
+const signed = (n: number, first: boolean) => (first || n < 0 ? String(n).replace('-', '−') : `+${n}`)
+
+/** A short sum: rows, a rule, and the total. */
+function SumTable({ caption, rows, total }: { caption: string; rows: SumRow[]; total: { label: string; pulls: number } }) {
+  return (
+    <table className="w-full text-[13px] tabular-nums">
+      <caption className="sr-only">{caption}</caption>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={row.label} className={row.subtotal ? 'border-t border-neutral-800' : undefined}>
+            <th scope="row" className={clsx('py-0.5 pr-3 text-left font-normal', row.subtotal ? 'text-neutral-100' : 'text-neutral-300')}>
+              {row.label}
+              {row.detail && <span className="text-neutral-500"> · {row.detail}</span>}
+            </th>
+            <td className={clsx('py-0.5 text-right', row.subtotal ? 'text-neutral-100' : 'text-neutral-200')}>
+              {row.subtotal ? row.pulls : signed(row.pulls, i === 0)}
+            </td>
+          </tr>
+        ))}
+        <tr className="border-t border-neutral-700">
+          <th scope="row" className="pt-1.5 pr-3 text-left font-medium text-neutral-100">{total.label}</th>
+          <td className="pt-1.5 text-right font-medium text-neutral-100">{total.pulls}</td>
+        </tr>
+      </tbody>
+    </table>
+  )
+}
+
 /** Banner detail (1b): chance curve, a what-if slider, and where the pulls come from. */
-export function BannerSheet({ result: r, onClose }: BannerSheetProps) {
+export function BannerSheet({ result: r, wallet, pitySource, onClose }: BannerSheetProps) {
   const player = usePlannerStore((s) => s.player)
   const config = usePlannerStore((s) => s.config)
   const patches = usePlannerStore((s) => s.patches)
@@ -85,6 +117,7 @@ export function BannerSheet({ result: r, onClose }: BannerSheetProps) {
 
   const thing = r.bannerType === 'character' ? (r.copies > 1 ? 'them' : 'the featured 5★') : 'your chosen 5★'
   const verdict = verdictFor(r)
+  const end = format(parseISO(r.phaseEndDate), 'MMM d')
   const title = `v${r.patchVersion} Phase ${r.stop.phase} · ${bannerTypeLabel(r.bannerType, r.copies)}`
 
   return (
@@ -101,7 +134,7 @@ export function BannerSheet({ result: r, onClose }: BannerSheetProps) {
         <div className="mx-auto mb-3 h-1 w-9 rounded-sm bg-neutral-700 md:hidden" aria-hidden />
         <div className="flex items-center justify-between gap-3">
           <span className="text-[13px] text-neutral-400">
-            {title}{r.stop.label ? ` · ${r.stop.label}` : ''}
+            {title}{bannerName(r) ? ` · ${bannerName(r)}` : ''}
           </span>
           <button ref={closeRef} type="button" className="btn-secondary btn-icon rounded-full" onClick={onClose} aria-label="Close">
             <X size={18} />
@@ -190,7 +223,7 @@ export function BannerSheet({ result: r, onClose }: BannerSheetProps) {
                   .filter((ph) => isSelectableBanner(ph.endDate, r.stop.patchId === p.id && r.stop.phase === ph.phase))
                   .map((ph) => (
                     <option key={`${p.id}:${ph.phase}`} value={`${p.id}:${ph.phase}`}>
-                      v{p.version} Phase {ph.phase} · {format(parseISO(ph.startDate), 'MMM d')}
+                      v{p.version} Phase {ph.phase} · {format(parseISO(ph.startDate), 'MMM d')}{featuredText(ph.featuredCharacters) ? ` · ${featuredText(ph.featuredCharacters)}` : ''}
                     </option>
                   )))}
               </select>
@@ -238,10 +271,51 @@ export function BannerSheet({ result: r, onClose }: BannerSheetProps) {
           </div>
         )}
 
+        <section className="mt-[22px]" aria-labelledby="adds-up">
+          <h2 id="adds-up" className="text-[13px] font-normal text-neutral-400">How it adds up</h2>
+
+          <div className="mt-2 rounded-lg p-3 shadow-sm">
+            <SumTable
+              caption="Pulls by the end of this banner"
+              rows={pullLedger(r, wallet)}
+              total={{ label: `By the end · ${end}`, pulls: Math.max(0, r.availableAtEnd) }}
+            />
+            <p className="mt-2 text-xs text-neutral-400">
+              {r.actualSpend > 0
+                ? `The plan spends ${r.actualSpend} here and carries ${Math.max(0, r.remainingAfter)} to the next banner.`
+                : 'Nothing is left for this banner, so nothing carries forward.'}
+              {` Pity ${r.pityBefore} at the start, ${r.pityAfter} after`}
+              {r.bannerType === 'character' && r.guaranteedAfter ? ' and guaranteed' : ''}
+              {' (worst case).'}
+            </p>
+          </div>
+
+          <div className="mt-2 rounded-lg p-3 shadow-sm">
+            <p className="mb-1.5 text-xs text-neutral-400">
+              Starts at pity {r.pityBefore}
+              {r.bannerType === 'character' ? (r.guaranteedBefore ? ', guaranteed' : ' on a 50/50') : ''}
+              {pitySource
+                ? `, after ${pitySource.actualSpend} pulls on v${pitySource.patchVersion} P${pitySource.stop.phase}${bannerName(pitySource) ? ` · ${bannerName(pitySource)}` : ''}`
+                : ', from your Wallet'}
+              . Worst case means every 5★ comes at hard pity and loses.
+            </p>
+            <SumTable
+              caption="Worst case pulls for this banner"
+              rows={worstCaseSteps(r)}
+              total={{ label: 'Worst case', pulls: r.pullsForGuarantee }}
+            />
+            <p className="mt-2 text-xs text-neutral-400">
+              {r.availableAtEnd >= r.pullsForGuarantee
+                ? `You'll have ${Math.max(0, r.availableAtEnd)}: covered, with ${r.availableAtEnd - r.pullsForGuarantee} to spare.`
+                : `You'll have ${Math.max(0, r.availableAtEnd)}: ${r.pullsForGuarantee - Math.max(0, r.availableAtEnd)} short of certain. The ${formatChance(r.successChance)} above is your real chance with those pulls.`}
+            </p>
+          </div>
+        </section>
+
         {incomeTotal > 0 && (
           <>
             <div className="mt-[22px] text-[13px] text-neutral-400">
-              Income to {format(parseISO(r.phaseEndDate), 'MMM d')} · ≈ {incomeTotal} pulls
+              Where income comes from · today to {end} ≈ {incomeTotal} pulls
             </div>
             <div className="mt-2 flex h-2.5 gap-0.5 overflow-hidden rounded-[5px]" aria-hidden>
               {income.map((b, i) => (

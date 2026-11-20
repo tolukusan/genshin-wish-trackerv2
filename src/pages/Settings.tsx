@@ -285,7 +285,7 @@ export function Settings() {
             </section>
 
             <section className="card p-5">
-                <SectionHeader title="Featured Characters" sub="Optional: add names once a banner is announced. They only label banners in the pickers and do not change any numbers." />
+                <SectionHeader title="Featured Characters" sub="Optional: add names once a banner is announced. They name banners on your Plan and do not change any numbers. Separate two names with a comma." />
                 <div className="flex flex-col gap-3">
                     {patches.map((patch) => (
                         <div key={patch.id} className="grid sm:grid-cols-3 gap-3 items-end">

@@ -691,6 +691,7 @@ export function runChain(input: {
     const actualSpend = plannedSpend
     const canAfford = availableAtEnd >= thresholds.nextFiveStar
 
+    const spentBefore = deficit
     if (actualSpend > 0) {
       deficit += actualSpend
       pityCarry[type] = applyChainSpend(type, stateBefore, actualSpend)
@@ -705,11 +706,13 @@ export function runChain(input: {
       patchVersion: patch.version,
       phaseDate: ph.startDate,
       phaseEndDate: format(phaseEnd, 'yyyy-MM-dd'),
+      featured: ph.featuredCharacters.map((n) => n.trim()).filter(Boolean),
       daysToStop,
       daysToEnd,
       pullsToSpend: plannedSpend,
       pullsToNextFiveStar: thresholds.nextFiveStar,
       pullsForGuarantee: thresholds.targetGuarantee,
+      spentBefore,
       availableAtStart,
       rewardsDuringBanner: Math.max(0, availableAtEnd - availableAtStart),
       availableAtEnd,

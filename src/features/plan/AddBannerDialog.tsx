@@ -4,6 +4,7 @@ import { clsx } from 'clsx'
 import { usePlannerStore } from '@/store/usePlannerStore'
 import { isSelectableBanner } from '@/utils/banners'
 import type { WishBannerType } from '@/types'
+import { featuredText } from './planModel'
 import { useModalFocus } from './useModalFocus'
 
 const TYPES: { type: WishBannerType; label: string; hint: string }[] = [
@@ -25,7 +26,7 @@ export function AddBannerDialog({ initial, onClose, onAdded }: AddBannerDialogPr
   const options = patches.flatMap((p) =>
     p.phases.filter((ph) => isSelectableBanner(ph.endDate, false)).map((ph) => ({
       value: `${p.id}:${ph.phase}`,
-      label: `v${p.version} Phase ${ph.phase} · ${format(parseISO(ph.startDate), 'MMM d')}`,
+      label: `v${p.version} Phase ${ph.phase} · ${format(parseISO(ph.startDate), 'MMM d')}${featuredText(ph.featuredCharacters) ? ` · ${featuredText(ph.featuredCharacters)}` : ''}`,
     })),
   )
   const [banner, setBanner] = useState(initial ? `${initial.patchId}:${initial.phase}` : options[0]?.value ?? '')

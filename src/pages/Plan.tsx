@@ -9,7 +9,7 @@ import { AddBannerDialog } from '@/features/plan/AddBannerDialog'
 import { BalanceChart } from '@/features/plan/BalanceChart'
 import { RiverTimeline } from '@/features/plan/RiverTimeline'
 import { PrintPlan } from '@/features/plan/PrintPlan'
-import { balanceSeries } from '@/features/plan/planModel'
+import { balanceSeries, pitySource } from '@/features/plan/planModel'
 import { usePlanData } from '@/features/plan/usePlanData'
 
 type Adding = { patchId: string; phase: 1 | 2 } | 'free' | null
@@ -127,7 +127,7 @@ export function Plan() {
         </section>
       </div>
 
-      {open && <BannerSheet result={open} onClose={closeSheet} />}
+      {open && <BannerSheet result={open} wallet={wallet} pitySource={pitySource(results, open)} onClose={closeSheet} />}
       {adding && (
         <AddBannerDialog
           initial={adding === 'free' ? undefined : adding}

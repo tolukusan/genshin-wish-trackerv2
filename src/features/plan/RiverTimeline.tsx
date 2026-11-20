@@ -2,7 +2,7 @@ import { addDays, format, parseISO, startOfDay } from 'date-fns'
 import { Plus } from '@phosphor-icons/react'
 import type { Patch, PatchModifier, PatchType } from '@/types'
 import { BannerCard } from './BannerCard'
-import { balanceAt, patchIncome, riverPath, type PlanPatchGroup, type RiverNode, type SnapshotFn } from './planModel'
+import { balanceAt, featuredText, patchIncome, riverPath, type PlanPatchGroup, type RiverNode, type SnapshotFn } from './planModel'
 import type { ChainStopResult } from '@/types'
 
 const PATCH_TYPE_LABEL: Record<PatchType, string> = {
@@ -19,7 +19,7 @@ const MODIFIER_LABEL: Record<PatchModifier, string> = {
 // Fixed row heights, so the river can be drawn at exactly the right places.
 const TODAY_H = 40
 const HEADER_H = 36
-const CARD_H = 168
+const CARD_H = 188
 const CARD_GAP = 8
 const ADD_H = 60
 const RIVER_W = 56
@@ -28,7 +28,7 @@ type Row =
   | { kind: 'today'; y: number }
   | { kind: 'header'; y: number; patch: Patch; income: number }
   | { kind: 'card'; y: number; result: ChainStopResult }
-  | { kind: 'add'; y: number; patch: Patch; phase: 1 | 2; when: string }
+  | { kind: 'add'; y: number; patch: Patch; phase: 1 | 2; when: string; featured: string }
 
 interface RiverTimelineProps {
   groups: PlanPatchGroup[]
@@ -67,7 +67,7 @@ export function RiverTimeline({ groups, results, snapshot, wallet, today, onOpen
         const when = running
           ? `ends ${format(addDays(parseISO(phase.endDate), -1), 'MMM d')}`
           : format(parseISO(phase.startDate), 'MMM d')
-        rows.push({ kind: 'add', y, patch: g.patch, phase: phase.phase, when })
+        rows.push({ kind: 'add', y, patch: g.patch, phase: phase.phase, when, featured: featuredText(phase.featuredCharacters) })
         nodes.push({ y: y + ADD_H / 2, value: Math.max(0, balanceAt(atOrAfterToday(phase.startDate), results, snapshot)) })
         y += ADD_H
         continue
@@ -149,7 +149,7 @@ export function RiverTimeline({ groups, results, snapshot, wallet, today, onOpen
                 onClick={() => onAdd(row.patch.id, row.phase)}
                 className="flex h-11 w-full items-center justify-between rounded-lg border border-dashed border-neutral-700 px-3 text-[13px] text-neutral-300 transition-colors hover:border-accent hover:bg-accent/10"
               >
-                <span>Phase {row.phase} · {row.when}</span>
+                <span className="truncate">Phase {row.phase} · {row.when}{row.featured ? ` · ${row.featured}` : ''}</span>
                 <span className="flex items-center gap-1 text-accent-300"><Plus aria-hidden />Add</span>
               </button>
             </li>

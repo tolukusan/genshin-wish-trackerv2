@@ -168,11 +168,13 @@ export interface ChainStopResult {
   patchVersion: string
   phaseDate: string
   phaseEndDate: string
+  featured: string[]        // names from Settings → Featured Characters for this phase (labels only)
   daysToStop: number
   daysToEnd: number
   pullsToSpend: number      // computed pity milestone; retained as a result field for compatibility
   pullsToNextFiveStar: number // worst case pulls to reach the next 5-star from pityBefore
   pullsForGuarantee: number   // worst case pulls to secure every wanted copy from pityBefore
+  spentBefore: number       // pulls the plan spent on earlier banners (already taken out of the figures below)
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   rewardsDuringBanner: number // estimated pulls earned during this banner phase
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)

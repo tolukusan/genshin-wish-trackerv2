@@ -1,7 +1,7 @@
 import { addMonths, differenceInCalendarDays, format, parseISO, startOfMonth } from 'date-fns'
 import { useElementWidth } from '@/components/guide/useElementWidth'
 import type { ChainStopResult } from '@/types'
-import type { BalancePoint } from './planModel'
+import { bannerName, type BalancePoint } from './planModel'
 
 interface BalanceChartProps {
   series: BalancePoint[]
@@ -9,6 +9,11 @@ interface BalanceChartProps {
   start: string
   end: string
   onOpen: (stopId: string) => void
+}
+
+/** Band labels share a narrow band with the next one, so long names are cut. */
+function shorten(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
 const H = 200 // plot height; labels sit above (to -30) and below (to 220)
@@ -64,7 +69,7 @@ export function BalanceChart({ series, results, start, end, onOpen }: BalanceCha
             <g key={r.stop.id} className="cursor-pointer" onClick={() => onOpen(r.stop.id)}>
               <rect x={bx} y={-30} width={bw} height={H + 30} fill="var(--color-accent-900)" opacity={0.7} />
               <text x={bx + 6} y={-14} fontSize={12} fill="var(--color-neutral-300)">
-                v{r.patchVersion} P{r.stop.phase}
+                v{r.patchVersion} P{r.stop.phase}{bannerName(r) ? ` · ${shorten(bannerName(r), 14)}` : ''}
               </text>
             </g>
           )

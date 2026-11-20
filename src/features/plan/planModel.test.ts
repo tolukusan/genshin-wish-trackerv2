@@ -14,7 +14,13 @@ import {
   RIVER_MAX_WIDTH,
   RIVER_MIN_WIDTH,
   typicalPulls,
+  bannerName,
   bannerTitle,
+  pitySource,
+  pullLedger,
+  pullsRows,
+  worstCaseSteps,
+  featuredText,
   bannerTypeLabel,
   spendLine,
   verdictFor,
@@ -171,19 +177,101 @@ describe('card text', () => {
   it('shows spend and carry when the guarantee is covered, otherwise how far short all-in leaves you', () => {
     const [r] = runChain({ player: rich, config, patches, today, chain: [stop('a', 'p73', 1, 'character')] })
     expect(r.actualSpend).toBe(r.pullsForGuarantee)
-    expect(spendLine(r)).toBe(`Spend ${r.actualSpend} · carry ≈ ${r.remainingAfter}`)
+    expect(spendLine(r)).toBe(`Spend ${r.actualSpend} · carry ≈ ${r.remainingAfter} · pity ${r.pityAfter} after`)
     const [poor] = runChain({ player, config, patches, today, chain: [stop('a', 'p73', 1, 'character')] })
-    expect(spendLine(poor)).toBe(`All ${poor.actualSpend} in · ${180 - poor.actualSpend} short of the guarantee`)
+    expect(spendLine(poor)).toBe(`All ${poor.actualSpend} in · carry 0 · pity ${poor.pityAfter} after`)
     // A second banner on the same phase gets nothing once the first has gone all-in.
     const [, broke] = runChain({ player, config, patches, today, chain: [stop('a', 'p73', 1, 'character'), stop('b', 'p73', 1, 'weapon')] })
     expect(broke.actualSpend).toBe(0)
-    expect(spendLine(broke)).toBe('No pulls left for this banner')
+    expect(spendLine(broke)).toBe(`No pulls left · carry 0 · pity ${broke.pityAfter} after`)
   })
 
-  it('titles upcoming banners by start date and running ones by end date', () => {
+  it('titles banners by version and phase, with dates on the start and end rows', () => {
     const [r] = runChain({ player: rich, config, patches, today, chain: [stop('a', 'p73', 1, 'character')] })
-    expect(bannerTitle(r, true, today)).toBe('v7.3 Phase 1 · Dec 16')
-    expect(bannerTitle(r, false, today)).toBe('Phase 1 · Dec 16')
-    expect(bannerTitle(r, false, new Date('2026-12-20'))).toBe('Phase 1 · ends Jan 5')
+    expect(bannerTitle(r, true)).toBe('v7.3 Phase 1')
+    expect(bannerTitle(r, false)).toBe('Phase 1')
+    expect(pullsRows(r, today).start.label).toBe('Start · Dec 16')
+    expect(pullsRows(r, today).end.label).toBe('End · Jan 5')
+    expect(pullsRows(r, new Date('2026-12-20')).start.label).toBe('Now')
+  })
+})
+
+describe('featured names', () => {
+  const named = patches.map((p) => p.id !== 'p73' ? p : {
+    ...p,
+    phases: p.phases.map((ph) => ph.phase === 1 ? { ...ph, featuredCharacters: [' Tsaritsa ', '', 'Nicole'] } : ph),
+  })
+
+  it('joins the names typed in Settings and skips blanks', () => {
+    expect(featuredText([' Mitya ', '', 'Linnea'])).toBe('Mitya, Linnea')
+    expect(featuredText([''])).toBe('')
+    expect(featuredText(undefined)).toBe('')
+  })
+
+  it('carries the phase names onto the result and uses them as the banner name', () => {
+    const [r] = runChain({ player, config, patches: named, today, chain: [stop('a', 'p73', 1, 'character')] })
+    expect(r.featured).toEqual(['Tsaritsa', 'Nicole'])
+    expect(bannerName(r)).toBe('Tsaritsa, Nicole')
+  })
+
+  it('prefers your own banner name, but not an old auto-filled "v7.3 Phase 1"', () => {
+    const [r] = runChain({ player, config, patches: named, today, chain: [{ ...stop('a', 'p73', 1, 'character'), label: 'Skirk rerun' }] })
+    expect(bannerName(r)).toBe('Skirk rerun')
+    const [old] = runChain({ player, config, patches: named, today, chain: [{ ...stop('a', 'p73', 1, 'character'), label: 'v7.3 Phase 1' }] })
+    expect(bannerName(old)).toBe('Tsaritsa, Nicole')
+  })
+
+  it('has no name when nothing was typed', () => {
+    const [r] = runChain({ player, config, patches, today, chain: [stop('a', 'p73', 1, 'character')] })
+    expect(bannerName(r)).toBe('')
+  })
+})
+
+describe('how it adds up', () => {
+  const sum = (rows: { pulls: number }[]) => rows.reduce((t, r) => t + r.pulls, 0)
+  const chain = [stop('a', 'p72', 2, 'character'), stop('b', 'p73', 1, 'character'), stop('w', 'p73', 2, 'weapon', 2)]
+  const results = runChain({ player, config, patches, today, chain })
+
+  it('pulls: wallet + income − earlier spending = pulls by the end, for every banner', () => {
+    for (const r of results) {
+      const rows = pullLedger(r, currentPulls(player))
+      expect(sum(rows.filter((row) => !row.subtotal))).toBe(r.availableAtEnd)
+      // The start subtotal equals everything above it.
+      const at = rows.findIndex((row) => row.subtotal)
+      expect(rows[at].pulls).toBe(sum(rows.slice(0, at)))
+      expect(rows[at].pulls).toBe(r.availableAtStart)
+    }
+    expect(pullLedger(results[0], currentPulls(player)).some((row) => row.label === 'Spent on earlier banners')).toBe(false)
+    expect(pullLedger(results[1], currentPulls(player))).toContainEqual({ label: 'Spent on earlier banners', pulls: -results[0].actualSpend })
+  })
+
+  it('worst case steps add up to the worst case, for every banner', () => {
+    for (const r of results) expect(sum(worstCaseSteps(r))).toBe(r.pullsForGuarantee)
+    const second = results[1]
+    // After an all-in first banner, the second starts from the carried pity on a 50/50.
+    expect(worstCaseSteps(second).map((row) => row.label)).toEqual(['Next 5★', 'If it loses the 50/50'])
+    expect(worstCaseSteps(second)[0].pulls).toBe(90 - second.pityBefore)
+  })
+
+  it('a guaranteed start has no lost-50/50 step', () => {
+    const [r] = runChain({ player: { ...player, characterBannerGuaranteed: true }, config, patches, today, chain: [stop('a', 'p73', 1, 'character')] })
+    expect(r.guaranteedBefore).toBe(true)
+    expect(worstCaseSteps(r).map((row) => row.label)).toEqual(['Next 5★'])
+  })
+
+  it('names the earlier banner of the same kind that set the starting pity', () => {
+    expect(pitySource(results, results[0])).toBeNull()
+    expect(pitySource(results, results[1])).toBe(results[0])
+    expect(pitySource(results, results[2])).toBeNull() // weapon pity is separate
+  })
+
+  it('card rows show pulls and pity at the start, and pulls against the worst case at the end', () => {
+    const r = results[1]
+    const rows = pullsRows(r, today)
+    expect(rows.start.text).toBe(`${r.availableAtStart} pulls · pity ${r.pityBefore}`)
+    expect(rows.end.text).toBe(`${r.availableAtEnd} pulls · worst case ${r.pullsForGuarantee}`)
+    // The pity the first banner leaves behind is where the second starts.
+    expect(spendLine(results[0])).toContain(`pity ${results[0].pityAfter} after`)
+    expect(results[1].pityBefore).toBe(results[0].pityAfter)
   })
 })

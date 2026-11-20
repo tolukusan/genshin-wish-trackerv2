@@ -232,13 +232,26 @@ export function bannerTypeLabel(type: WishBannerType, copies: number): string {
   return copies > 1 || type === 'character' ? `${name} ×${copies}` : name
 }
 
-/** "v7.3 Phase 1 · Dec 16"; a banner already running shows when it ends instead. */
-export function bannerTitle(r: ChainStopResult, withVersion: boolean, today = new Date()): string {
-  const running = parseISO(r.phaseDate) <= startOfDay(today)
-  const when = running
-    ? `Phase ${r.stop.phase} · ends ${format(parseISO(r.phaseEndDate), 'MMM d')}`
-    : `Phase ${r.stop.phase} · ${format(parseISO(r.phaseDate), 'MMM d')}`
-  return withVersion ? `v${r.patchVersion} ${when}` : when
+/** The names typed in Settings → Featured Characters for a phase, e.g. "Mitya, Linnea". */
+export function featuredText(names: readonly string[] | undefined): string {
+  return (names ?? []).map((n) => n.trim()).filter(Boolean).join(', ')
+}
+
+/**
+ * What a banner is called: the name you gave it, otherwise the phase's
+ * featured characters. Older versions saved "v7.3 Phase 1" as the name when
+ * none was known; that adds nothing to the title, so it doesn't count.
+ */
+export function bannerName(r: Pick<ChainStopResult, 'stop' | 'featured'>): string {
+  const own = r.stop.label?.trim() ?? ''
+  if (own && !/^v?[\d.]+ Phase [12]$/i.test(own)) return own
+  return featuredText(r.featured)
+}
+
+/** "v7.3 Phase 1" (or "Phase 1" where a patch header already names the version). Dates sit on the start and end rows. */
+export function bannerTitle(r: ChainStopResult, withVersion: boolean): string {
+  const phase = `Phase ${r.stop.phase}`
+  return withVersion ? `v${r.patchVersion} ${phase}` : phase
 }
 
 /**
@@ -247,7 +260,93 @@ export function bannerTitle(r: ChainStopResult, withVersion: boolean, today = ne
  * spends everything and says how far short of the guarantee that leaves you.
  */
 export function spendLine(r: ChainStopResult): string {
-  if (r.actualSpend <= 0) return 'No pulls left for this banner'
-  if (r.actualSpend >= r.pullsForGuarantee) return `Spend ${r.actualSpend} · carry ≈ ${r.remainingAfter}`
-  return `All ${r.actualSpend} in · ${r.pullsForGuarantee - r.actualSpend} short of the guarantee`
+  const pity = `pity ${r.pityAfter} after`
+  if (r.actualSpend <= 0) return `No pulls left · carry 0 · ${pity}`
+  if (r.actualSpend >= r.pullsForGuarantee) return `Spend ${r.actualSpend} · carry ≈ ${r.remainingAfter} · ${pity}`
+  return `All ${r.actualSpend} in · carry 0 · ${pity}`
+}
+
+export interface CardRow {
+  label: string
+  text: string
+}
+
+/**
+ * The card's start and end rows: "Start · Nov 25" "9 pulls · pity 10" and
+ * "End · Dec 15" "41 pulls · worst case 170". A banner already running starts "Now".
+ */
+export function pullsRows(r: ChainStopResult, today = new Date()): { start: CardRow; end: CardRow } {
+  const pulls = (n: number) => `${n} pull${n === 1 ? '' : 's'}`
+  const running = parseISO(r.phaseDate) <= startOfDay(today)
+  return {
+    start: {
+      label: running ? 'Now' : `Start · ${format(parseISO(r.phaseDate), 'MMM d')}`,
+      text: `${pulls(Math.max(0, r.availableAtStart))} · pity ${r.pityBefore}`,
+    },
+    end: {
+      label: `End · ${format(parseISO(r.phaseEndDate), 'MMM d')}`,
+      text: `${pulls(Math.max(0, r.availableAtEnd))} · worst case ${r.pullsForGuarantee}`,
+    },
+  }
+}
+
+// ── How it adds up (banner sheet) ─────────────────────────────────────────────
+
+export interface SumRow {
+  label: string
+  detail?: string
+  /** Signed amount: income is positive, spending negative. A subtotal is the running total so far. */
+  pulls: number
+  subtotal?: boolean
+}
+
+/**
+ * Where a banner's pulls come from: wallet today, plus income up to the
+ * banner's end, minus what earlier banners in the plan spent. The rows add up
+ * to availableAtEnd exactly; income is whatever makes up the difference, so a
+ * rounding gap in the projection can never make the sum look wrong.
+ */
+export function pullLedger(r: ChainStopResult, wallet: number): SumRow[] {
+  const start = format(parseISO(r.phaseDate), 'MMM d')
+  const rows: SumRow[] = [{ label: 'In your wallet now', pulls: wallet }]
+  const running = parseISO(r.phaseDate) <= startOfDay(new Date())
+  if (!running) rows.push({ label: `Income to ${start}`, detail: 'estimate', pulls: r.availableAtStart + r.spentBefore - wallet })
+  if (r.spentBefore > 0) rows.push({ label: 'Spent on earlier banners', pulls: -r.spentBefore })
+  rows.push({ label: running ? 'Now' : `At the start · ${start}`, detail: `pity ${r.pityBefore}`, pulls: r.availableAtStart, subtotal: true })
+  rows.push({ label: 'Earned during the banner', detail: 'estimate', pulls: r.availableAtEnd - r.availableAtStart })
+  return rows
+}
+
+/**
+ * Why the worst case is what it is: pulls to the next 5★ from the pity you
+ * start at, then a lost 50/50 (or Fate Point) and any extra copies. The rows
+ * add up to pullsForGuarantee, mirroring the engine's bannerThresholds.
+ */
+export function worstCaseSteps(r: ChainStopResult): SumRow[] {
+  const hard = GAME_RULES.hardPity[r.bannerType]
+  const nextSecured = r.guaranteedBefore || (r.bannerType !== 'character' && r.fatePointsBefore > 0)
+  const rows: SumRow[] = [{
+    label: 'Next 5★',
+    detail: `from pity ${r.pityBefore}, certain by ${hard}`,
+    pulls: r.pullsToNextFiveStar,
+  }]
+  if (!nextSecured) {
+    rows.push(r.bannerType === 'character'
+      ? { label: 'If it loses the 50/50', detail: 'the next 5★ is guaranteed', pulls: hard }
+      : { label: 'If it isn’t your pick', detail: 'a Fate Point makes the next one yours', pulls: hard })
+  }
+  const extra = Math.max(0, r.copies - 1)
+  if (extra > 0) {
+    rows.push({ label: `${extra} more cop${extra === 1 ? 'y' : 'ies'}`, detail: 'each could take two 5★', pulls: extra * 2 * hard })
+  }
+  return rows
+}
+
+/** The latest earlier banner of the same kind that spent pulls: it set this banner's starting pity. */
+export function pitySource(results: ChainStopResult[], r: ChainStopResult): ChainStopResult | null {
+  const i = results.indexOf(r)
+  for (let j = i - 1; j >= 0; j--) {
+    if (results[j].bannerType === r.bannerType && results[j].actualSpend > 0) return results[j]
+  }
+  return null
 }

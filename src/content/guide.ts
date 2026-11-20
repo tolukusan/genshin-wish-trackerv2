@@ -51,7 +51,7 @@ export const GUIDE: GuideTopic[] = [
     summary: 'Future banners, featured characters and patch content are not announced in advance, so the app uses averages and your own guesses. Treat results as a plan, not a promise.',
     body: [
       'HoYoverse only announces a patch shortly before it releases, so the app cannot know future featured characters, events, or whether a patch adds a new area. Different players will reasonably guess differently, and that is expected.',
-      'Banners are therefore listed by version and phase, for example "v7.3 Phase 1 · Dec 16". Once a banner is announced you can add character names in Settings → Featured Characters; they only label the pickers and do not change any numbers.',
+      'Banners are therefore listed by version and phase, for example "v7.3 Phase 1 · Dec 16". Once a banner is announced you can add character names in Settings → Featured Characters; they name banners on your Plan and do not change any numbers.',
       'When a patch is announced, update its type under Patch guesses to sharpen the projection.',
     ],
   },

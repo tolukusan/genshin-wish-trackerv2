@@ -2,7 +2,7 @@ import { CaretRight, ShieldCheck, TrendUp, Warning, XCircle } from '@phosphor-ic
 import { clsx } from 'clsx'
 import { formatChance } from '@/engine/probability'
 import type { ChainStopResult } from '@/types'
-import { bannerTitle, bannerTypeLabel, spendLine, VERDICT_LABEL, verdictFor, type Verdict } from './planModel'
+import { bannerName, bannerTitle, bannerTypeLabel, pullsRows, spendLine, VERDICT_LABEL, verdictFor, type Verdict } from './planModel'
 
 const VERDICT_ICON = { secured: ShieldCheck, 'very-likely': TrendUp, likely: TrendUp, risky: Warning, short: XCircle } as const
 
@@ -35,7 +35,8 @@ interface BannerCardProps {
 
 export function BannerCard({ result: r, onOpen, withVersion = false, size = 'river', today = new Date() }: BannerCardProps) {
   const verdict = verdictFor(r)
-  const name = r.stop.label?.trim()
+  const rows = pullsRows(r, today)
+  const name = bannerName(r)
   const desktop = size === 'desktop'
   return (
     <button
@@ -43,12 +44,12 @@ export function BannerCard({ result: r, onOpen, withVersion = false, size = 'riv
       onClick={onOpen}
       className={clsx(
         'plan-card group flex w-full flex-col rounded-lg bg-surface text-left shadow-sm transition-shadow hover:shadow-md',
-        desktop ? 'px-[18px] py-4' : 'h-[168px] px-[14px] py-3',
+        desktop ? 'px-[18px] py-4' : 'h-[188px] px-[14px] py-3',
       )}
-      aria-label={`${name || bannerTitle(r, true, today)}: ${formatChance(r.successChance)} chance, ${VERDICT_LABEL[verdict]}. Open details`}
+      aria-label={`${name || bannerTitle(r, true)}: ${formatChance(r.successChance)} chance, ${VERDICT_LABEL[verdict]}. Open details`}
     >
       <span className={clsx('flex w-full justify-between gap-3 text-neutral-400', desktop ? 'text-[13px]' : 'text-xs')}>
-        <span className="truncate">{bannerTitle(r, withVersion, today)}{name ? ` · ${name}` : ''}</span>
+        <span className="truncate">{bannerTitle(r, withVersion)}{name ? ` · ${name}` : ''}</span>
         <span className="flex-none">{bannerTypeLabel(r.bannerType, r.copies)}</span>
       </span>
       <span className={clsx('flex items-baseline gap-[10px]', desktop ? 'mt-[10px]' : 'mt-2')}>
@@ -57,8 +58,9 @@ export function BannerCard({ result: r, onOpen, withVersion = false, size = 'riv
         </span>
         <VerdictTag verdict={verdict} />
       </span>
-      <span className={clsx('text-neutral-300', desktop ? 'mt-[10px] text-sm' : 'mt-[6px] text-[13px]')}>
-        {r.availableAtEnd} pulls by end · worst case {r.pullsForGuarantee}
+      <span className={clsx('grid grid-cols-[auto_1fr] gap-x-2 text-neutral-300', desktop ? 'mt-[10px] text-sm' : 'mt-[6px] text-[13px]')}>
+        <span className="text-neutral-500">{rows.start.label}</span><span className="truncate">{rows.start.text}</span>
+        <span className="text-neutral-500">{rows.end.label}</span><span className="truncate">{rows.end.text}</span>
       </span>
       {desktop ? (
         <span className="mt-1 text-[13px] text-neutral-400">{spendLine(r)}</span>
