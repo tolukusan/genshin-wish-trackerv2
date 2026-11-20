@@ -1,16 +1,16 @@
-// Colour roles for guide visuals (light theme, matching the app).
-// Series colours validated with the dataviz palette checker on #ffffff:
-// purple/orange pass CVD separation (ΔE 32) and 3:1 contrast.
+// Colour roles for guide visuals (Nocturne dark theme, matching the app).
+// The primary series is the accent's light step; the second series is a warm
+// amber so the two stay apart for colour-vision deficiencies on the dark ground.
 export const VIZ = {
-  series1: '#7c3aed', // brand purple: primary series
-  series2: '#eb6834', // orange: second series (bonus)
-  seriesFill: 'rgba(124,58,237,0.12)',
-  textPrimary: '#0f172a',
-  textSecondary: '#475569',
-  textMuted: '#64748b',
-  grid: '#e2e8f0',
-  axis: '#cbd5e1',
-  surface: '#ffffff',
-  good: '#059669',
-  critical: '#dc2626',
+  series1: '#b5abfc', // accent-400: primary series
+  series2: '#e8a66b', // warm amber: second series (bonus)
+  seriesFill: 'rgba(145,132,217,0.18)',
+  textPrimary: '#e9e9ed',
+  textSecondary: '#cfd3e5',
+  textMuted: '#b2b6ca',
+  grid: '#3f424d',
+  axis: '#595d6c',
+  surface: '#232532',
+  good: '#8fd6b3',
+  critical: '#f0a3a3',
 } as const

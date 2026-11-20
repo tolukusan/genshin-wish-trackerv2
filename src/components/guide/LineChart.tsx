@@ -154,7 +154,7 @@ export function LineChart({
             transform: `translateX(${tipLeftPct > 70 ? '-105%' : '5%'})`,
             background: VIZ.surface, border: `1px solid ${VIZ.axis}`, borderRadius: 6,
             padding: '4px 8px', fontSize: 12, color: VIZ.textPrimary, pointerEvents: 'none',
-            boxShadow: '0 4px 12px rgba(15,23,42,0.12)', whiteSpace: 'nowrap',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)', whiteSpace: 'nowrap',
           }}
         >
           <span style={{ color: VIZ.textSecondary }}>{formatX(hover)}: </span>

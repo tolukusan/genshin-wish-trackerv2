@@ -57,7 +57,7 @@ export function Guide() {
             key={t.id}
             href={`#guide-${t.id}`}
             className="text-xs rounded-full border px-2.5 py-1 text-slate-700 hover:border-violet-400 hover:text-violet-700 bg-white"
-            style={{ borderColor: '#cbd5e1' }}
+            style={{ borderColor: 'var(--color-neutral-700)' }}
           >
             {t.title}
           </a>
@@ -71,7 +71,7 @@ export function Guide() {
             <div className="flex items-center gap-2 flex-wrap">
               <h2 id={`guide-h-${t.id}`} className="text-base font-semibold text-slate-900">{t.title}</h2>
               {interactive && (
-                <span className="text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5" style={{ background: 'rgba(124,58,237,0.1)', color: '#5b21b6' }}>
+                <span className="text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5" style={{ background: 'rgba(145,132,217,0.1)', color: 'var(--color-accent-300)' }}>
                   Try it
                 </span>
               )}
@@ -88,10 +88,10 @@ export function Guide() {
 
       <div className="flex flex-wrap gap-3">
         <button className="btn-primary" onClick={() => setNav('data-entry')}>Enter my resources</button>
-        <button className="btn-secondary" onClick={() => setNav('next-character')}>Back to Next Character</button>
+        <button className="btn-secondary" onClick={() => setNav('roadmap')}>Go to my Plan</button>
         {introDismissed && (
-          <button className="btn-secondary" onClick={() => { setIntroDismissed(false); setNav('next-character') }}>
-            Show the getting-started card again
+          <button className="btn-secondary" onClick={() => { setIntroDismissed(false); setNav('roadmap') }}>
+            Show the getting-started tips again
           </button>
         )}
       </div>

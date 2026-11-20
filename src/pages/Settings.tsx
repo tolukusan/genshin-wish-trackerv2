@@ -169,7 +169,7 @@ export function Settings() {
             <section className="card p-5">
                 <SectionHeader
                     title="Recurring Rewards"
-                    sub="Welkin Moon and Battle Pass are shared with Roadmap; the rest are calculated individually by Next Character."
+                    sub="Counted for the rest of the patch running now (Welkin Moon for as long as it lasts). Future patches use the all-inclusive Plan wish estimates below instead."
                 />
                 <div className="grid sm:grid-cols-2 gap-4">
                     <NumberInput
@@ -214,54 +214,7 @@ export function Settings() {
 
             <section className="card p-5">
                 <SectionHeader
-                    title="Base Content Rewards"
-                    sub="Next Character only — event/content income for the patch's base content level. Special bonuses are added separately, then the combined estimate is split 50/50 across phases."
-                />
-                <div className="grid sm:grid-cols-2 gap-4">
-                    {(Object.keys(PATCH_TYPE_LABELS) as PatchType[]).map((t) => (
-                        <NumberInput
-                            key={t}
-                            label={`${PATCH_TYPE_LABELS[t]} (primos/patch)`}
-                            value={r.patchTypeRewards[t]}
-                            min={0}
-                            onChange={(v) =>
-                                updateRecurring({
-                                    patchTypeRewards: { ...r.patchTypeRewards, [t]: v },
-                                })
-                            }
-                        />
-                    ))}
-                </div>
-            </section>
-
-            <section className="card p-5">
-                <SectionHeader
-                    title="Special Bonus Rewards"
-                    sub="Next Character only — additive bonuses. A New Region + Anniversary patch receives both the New Region base and Anniversary bonus."
-                />
-                <div className="grid sm:grid-cols-2 gap-4">
-                    {(Object.keys(PATCH_MODIFIER_LABELS) as PatchModifier[]).map((modifier) => (
-                        <NumberInput
-                            key={modifier}
-                            label={`${PATCH_MODIFIER_LABELS[modifier]} bonus (primos/patch)`}
-                            value={r.patchModifierRewards[modifier]}
-                            min={0}
-                            onChange={(v) =>
-                                updateRecurring({
-                                    patchModifierRewards: {
-                                        ...r.patchModifierRewards,
-                                        [modifier]: v,
-                                    },
-                                })
-                            }
-                        />
-                    ))}
-                </div>
-            </section>
-
-            <section className="card p-5">
-                <SectionHeader
-                    title="Roadmap Base Wishes"
+                    title="Plan Base Wishes"
                     sub="All-inclusive F2P estimate for each base content level. Special bonuses below stack on top and the total is split 50/50 across phases."
                 />
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -286,7 +239,7 @@ export function Settings() {
 
             <section className="card p-5">
                 <SectionHeader
-                    title="Roadmap Special Bonuses"
+                    title="Plan Special Bonuses"
                     sub="Additive all-inclusive wish bonuses for Anniversary and Lantern Rite patches."
                 />
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -311,23 +264,10 @@ export function Settings() {
 
             <section className="card p-5">
                 <SectionHeader
-                    title="Patch Maintenance & Livestream"
-                    sub="Used by Next Character only — applied automatically to every patch"
+                    title="Livestream Codes"
+                    sub="Counted for the rest of the patch running now. Future patches already include them in their wish estimates."
                 />
                 <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-2">
-                        <Toggle
-                            label="Patch Maintenance"
-                            checked={config.maintenanceIncluded}
-                            onChange={(v: boolean) => updateConfig({ maintenanceIncluded: v })}
-                        />
-                        <NumberInput
-                            label="Primos per patch"
-                            value={r.maintenancePrimos}
-                            min={0}
-                            onChange={(v) => updateRecurring({ maintenancePrimos: v })}
-                        />
-                    </div>
                     <div className="flex flex-col gap-2">
                         <Toggle
                             label="Livestream Codes"

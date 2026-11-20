@@ -1,83 +1,33 @@
-import { usePlannerStore } from '@/store/usePlannerStore'
-import type { NavTab } from '@/types'
 import { clsx } from 'clsx'
-import { parseISO, isWithinInterval, format } from 'date-fns'
+import { usePlannerStore } from '@/store/usePlannerStore'
+import { PRIMARY_TABS, primaryTabFor } from './navItems'
 
-const NAV: { tab: NavTab; label: string; icon: string }[] = [
-  { tab: 'next-character', label: 'Next Character', icon: '◎' },
-  { tab: 'data-entry', label: 'Data Entry', icon: '⬡' },
-  { tab: 'patches', label: 'Patches', icon: '◈' },
-  { tab: 'roadmap', label: 'Roadmap', icon: '⇢' },
-  { tab: 'settings', label: 'Settings', icon: '⚙' },
-  { tab: 'guide', label: 'Guide', icon: '?' },
-]
-
-function prevVersion(v: string) {
-  const [maj, min] = v.split('.').map(Number)
-  return min === 0 ? `${maj - 1}.7` : `${maj}.${min - 1}`
-}
-
+/** Desktop rail (1b): a 76px column of icon tabs. */
 export function Sidebar() {
-  const { nav, setNav, openGuide, patches, config } = usePlannerStore()
-
-  const today = new Date()
-  const currentPatch = patches.find((p) =>
-    isWithinInterval(today, { start: parseISO(p.startDate), end: parseISO(p.endDate) })
-  )
-  const firstPatch = patches[0]
-  const beforeAnchor = !currentPatch && firstPatch && today < parseISO(firstPatch.startDate)
-
-  const footerLine1 = currentPatch
-    ? `Currently v${currentPatch.version}`
-    : beforeAnchor && firstPatch
-    ? `Currently v${prevVersion(firstPatch.version)}`
-    : firstPatch
-    ? `v${firstPatch.version}`
-    : 'No patches'
-
-  const footerLine2 = currentPatch
-    ? `ends ${format(parseISO(currentPatch.endDate), 'MMM d')}`
-    : beforeAnchor && firstPatch
-    ? `v${firstPatch.version} starts ${format(parseISO(firstPatch.startDate), 'MMM d')}`
-    : `${config.recurring.patchLengthDays}d cycles`
+  const nav = usePlannerStore((s) => s.nav)
+  const setNav = usePlannerStore((s) => s.setNav)
+  const active = primaryTabFor(nav)
 
   return (
-    <aside className="w-56 shrink-0 bg-navy-800 border-r border-slate-300/50 flex flex-col">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-slate-300/50">
-        <div className="flex items-center gap-2">
-          <span className="text-accent-purple text-xl">✦</span>
-          <div>
-            <p className="text-sm font-semibold text-slate-900 leading-tight">Teyvat Pull</p>
-            <p className="text-xs text-slate-500 leading-tight">Planner</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 p-3 flex flex-col gap-1">
-        {NAV.map(({ tab, label, icon }) => (
+    <nav aria-label="Main" className="flex w-[76px] shrink-0 flex-col items-center gap-2 py-5 shadow-[1px_0_0_var(--color-divider)]">
+      {PRIMARY_TABS.map(({ tab, label, icon: Icon }) => {
+        const on = active === tab
+        return (
           <button
             key={tab}
-            onClick={() => (tab === 'guide' ? openGuide() : setNav(tab))}
-            className={clsx(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left w-full',
-              nav === tab
-                ? 'bg-accent-purple/20 text-accent-purple-light border border-accent-purple/30'
-                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-300/40'
-            )}
+            type="button"
+            onClick={() => setNav(tab)}
+            aria-current={on ? 'page' : undefined}
+            className="group flex flex-col items-center gap-1 pb-1"
           >
-            <span className="text-base w-5 text-center">{icon}</span>
-            {label}
+            <span className={clsx('grid h-11 w-11 place-items-center rounded-lg transition-colors',
+              on ? 'bg-accent-900 text-accent-200' : 'text-neutral-300 group-hover:bg-neutral-800/60')}>
+              <Icon size={22} weight={on ? 'fill' : 'regular'} aria-hidden />
+            </span>
+            <span className={clsx('text-[11px]', on ? 'text-accent-300' : 'text-neutral-400')}>{label}</span>
           </button>
-        ))}
-      </nav>
-
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-slate-300/50">
-        <p className="text-xs text-slate-600">{footerLine1}</p>
-        <p className="text-xs text-slate-500">{footerLine2}</p>
-      </div>
-    </aside>
+        )
+      })}
+    </nav>
   )
 }

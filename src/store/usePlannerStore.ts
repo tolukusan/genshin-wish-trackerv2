@@ -313,9 +313,9 @@ export function migratePersistedState(input: unknown): PlannerStore {
     return {
         ...persisted,
         nav:
-            oldNav === "dashboard" || oldNav === "forecast"
-                ? "next-character"
-                : oldNav === "scenarios"
+            // The single-banner forecast (and the older dashboard/forecast pages)
+            // are now part of the Plan.
+            oldNav === "dashboard" || oldNav === "forecast" || oldNav === "next-character" || oldNav === "scenarios"
                 ? "roadmap"
                 : oldNav,
         patches: migratedPatches,
@@ -326,6 +326,21 @@ export function migratePersistedState(input: unknown): PlannerStore {
             recurring: migratedRecurring,
         },
     } as unknown as PlannerStore;
+}
+
+// Stable sort of chain stops by their banner phase start date. Stops on the
+// same phase keep their relative order; stops whose patch is gone sort last.
+export function sortChainByDate(chain: ChainStop[], patches: Patch[]): ChainStop[] {
+    const startOf = (stop: ChainStop) => {
+        const phase = patches
+            .find((p) => p.id === stop.patchId)
+            ?.phases.find((ph) => ph.phase === stop.phase);
+        return phase ? parseISO(phase.startDate).getTime() : Number.POSITIVE_INFINITY;
+    };
+    return chain
+        .map((stop, index) => ({ stop, index, start: startOf(stop) }))
+        .sort((a, b) => a.start - b.start || a.index - b.index)
+        .map(({ stop }) => stop);
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -368,6 +383,8 @@ interface PlannerStore {
     deleteScenario: (id: string) => void;
     rebuildPatchDates: () => void;
     addChainStop: (bannerType?: WishBannerType) => void;
+    /** Adds a stop on a specific banner phase, keeping the chain in date order. Returns its id. */
+    addChainStopAt: (patchId: string, phase: 1 | 2, bannerType?: WishBannerType) => string;
     updateChainStop: (id: string, data: Partial<Omit<ChainStop, "id">>) => void;
     deleteChainStop: (id: string) => void;
     moveChainStop: (id: string, direction: "up" | "down") => void;
@@ -376,7 +393,7 @@ interface PlannerStore {
 export const usePlannerStore = create<PlannerStore>()(
     persist(
         (set, get) => ({
-            nav: "next-character",
+            nav: "roadmap",
             player: defaultPlayer,
             config: defaultConfig,
             patches: buildSeedPatches(
@@ -599,12 +616,29 @@ export const usePlannerStore = create<PlannerStore>()(
                 set((s) => ({ chain: [...s.chain, stop] }));
             },
 
+            addChainStopAt: (patchId, phase, bannerType = "character") => {
+                const stop: ChainStop = {
+                    id: nanoid(),
+                    patchId,
+                    phase,
+                    label: "",
+                    bannerType,
+                    copies: 1,
+                };
+                set((s) => ({ chain: sortChainByDate([...s.chain, stop], s.patches) }));
+                return stop.id;
+            },
+
             updateChainStop: (id, data) =>
-                set((s) => ({
-                    chain: s.chain.map((c) =>
+                set((s) => {
+                    const chain = s.chain.map((c) =>
                         c.id === id ? { ...c, ...data } : c,
-                    ),
-                })),
+                    );
+                    // Moving a stop to another banner re-sorts the chain, because
+                    // pity and spending carry forward in chain order.
+                    const moved = data.patchId !== undefined || data.phase !== undefined;
+                    return { chain: moved ? sortChainByDate(chain, s.patches) : chain };
+                }),
 
             deleteChainStop: (id) =>
                 set((s) => ({ chain: s.chain.filter((c) => c.id !== id) })),

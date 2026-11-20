@@ -7,8 +7,8 @@ import { VIZ } from './vizTheme'
 
 function Box({ children, tone = 'neutral', className = '' }: { children: ReactNode; tone?: 'neutral' | 'good' | 'warn' | 'accent'; className?: string }) {
   const styles = {
-    neutral: { background: '#f8fafc', borderColor: '#cbd5e1' },
-    accent: { background: 'rgba(124,58,237,0.07)', borderColor: 'rgba(124,58,237,0.4)' },
+    neutral: { background: 'var(--color-neutral-900)', borderColor: 'var(--color-neutral-700)' },
+    accent: { background: 'rgba(145,132,217,0.07)', borderColor: 'rgba(145,132,217,0.4)' },
     good: { background: 'rgba(5,150,105,0.07)', borderColor: 'rgba(5,150,105,0.45)' },
     warn: { background: 'rgba(235,104,52,0.08)', borderColor: 'rgba(235,104,52,0.45)' },
   }[tone]
@@ -32,9 +32,9 @@ function Arrow({ label, down = false }: { label?: string; down?: boolean }) {
 export function StepsVisual() {
   const { setNav } = usePlannerStore()
   const steps = [
-    { n: 1, title: 'Data Entry', text: 'What you have today', nav: 'data-entry' as const, required: true },
-    { n: 2, title: 'Patches', text: 'Optional: guess patch types', nav: 'patches' as const },
-    { n: 3, title: 'Next Character or Roadmap', text: 'Pick banners, read results', nav: 'next-character' as const },
+    { n: 1, title: 'Wallet', text: 'What you have today', nav: 'data-entry' as const, required: true },
+    { n: 2, title: 'Patch guesses', text: 'Optional: guess patch types', nav: 'patches' as const },
+    { n: 3, title: 'Plan', text: 'Add banners, read your chances', nav: 'roadmap' as const },
   ]
   return (
     <ol className="flex flex-col sm:flex-row items-stretch gap-2">
@@ -43,7 +43,7 @@ export function StepsVisual() {
           <button
             onClick={() => setNav(s.nav)}
             className="flex-1 text-left rounded-lg border px-3 py-2.5 hover:shadow-sm transition-shadow"
-            style={{ borderColor: s.required ? 'rgba(124,58,237,0.45)' : '#cbd5e1', background: s.required ? 'rgba(124,58,237,0.06)' : '#f8fafc' }}
+            style={{ borderColor: s.required ? 'rgba(145,132,217,0.45)' : 'var(--color-neutral-700)', background: s.required ? 'rgba(145,132,217,0.06)' : 'var(--color-neutral-900)' }}
           >
             <span className="text-xs font-bold" style={{ color: VIZ.series1 }}>STEP {s.n}{s.required ? ' · REQUIRED' : ''}</span>
             <span className="block text-sm font-semibold text-slate-900">{s.title}</span>
@@ -67,7 +67,7 @@ export function UnknownsVisual() {
         <ul className="flex flex-col gap-1">{known.map((k) => <li key={k} className="text-sm">✓ {k}</li>)}</ul>
       </Box>
       <Box tone="warn">
-        <p className="text-xs font-bold mb-1.5" style={{ color: '#b45309' }}>? UNKNOWN · averages or your guess</p>
+        <p className="text-xs font-bold mb-1.5" style={{ color: '#e8c47e' }}>? UNKNOWN · averages or your guess</p>
         <ul className="flex flex-col gap-1">{guessed.map((k) => <li key={k} className="text-sm">? {k}</li>)}</ul>
       </Box>
     </div>
@@ -126,11 +126,13 @@ export function FatePointsVisual({ compact = false }: { compact?: boolean }) {
 
 // ── Roadmap: spend vs carry across three example banners ─────────────────────
 export function RoadmapVisual() {
-  // Worked example following the planner's rules from 0 pity on a 50/50.
+  // Worked example following the planner's all-in rule from 0 pity on a 50/50.
+  // A: 150 pulls, worst case one 5★ at 90 (lost 50/50) → pity 60, guaranteed.
+  // B: guaranteed at pity 60, so 30 more pulls secure it.
   const stops = [
-    { name: 'Character A', have: 150, need: '180 to guarantee', spend: 90, why: 'can only afford one 5★ (worst case: lost 50/50)', carry: 60 },
-    { name: 'Character B', have: 130, need: '90 (guaranteed now)', spend: 90, why: 'guarantee affordable', carry: 40 },
-    { name: 'Weapon', have: 110, need: '160 to guarantee', spend: 80, why: 'one 5★ affordable', carry: 30 },
+    { name: 'Character A', have: 150, need: '180 to guarantee', spend: 150, why: 'short of the guarantee, so all-in (worst case: a lost 50/50, pity 60 carries)', carry: 0 },
+    { name: 'Character B', have: 70, need: '30 (pity 60, guaranteed)', spend: 30, why: 'guarantee covered, the rest carries', carry: 40 },
+    { name: 'Weapon', have: 110, need: '160 to guarantee', spend: 110, why: 'short of the guarantee, so all-in', carry: 0 },
   ]
   return (
     <div className="flex flex-col gap-2">
@@ -170,14 +172,14 @@ export function StarglitterVisual() {
             key={i}
             className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold"
             style={i === 9
-              ? { background: VIZ.series1, color: '#fff' }
-              : { background: '#f1f5f9', color: VIZ.textMuted, border: '1px solid #e2e8f0' }}
+              ? { background: VIZ.series1, color: '#161826' }
+              : { background: 'var(--color-neutral-900)', color: VIZ.textMuted, border: '1px solid var(--color-neutral-800)' }}
           >
             {i === 9 ? '4★' : '3★'}
           </span>
         ))}
         <Arrow label="duplicate" />
-        <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ background: 'rgba(235,104,52,0.1)', color: '#9a3412' }}>+2 to 5 starglitter</span>
+        <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ background: 'rgba(235,104,52,0.1)', color: '#e8a66b' }}>+2 to 5 starglitter</span>
       </div>
       <p className="text-xs text-slate-600">
         Every 10 pulls include at least one 4★. Duplicates refund starglitter; 5 starglitter buys a fate.

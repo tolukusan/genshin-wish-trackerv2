@@ -447,6 +447,18 @@ export function getRoadmapBridge(input: {
   return computeRoadmapSnapshot(input.player, input.config, input.patches, parseISO(firstFuturePatch.startDate), today, false)
 }
 
+/** Roadmap-model balance and income breakdown at a cutoff date (the same model runChain uses). */
+export function getRoadmapSnapshot(input: {
+  player: PlayerState
+  config: ProjectionConfig
+  patches: Patch[]
+  cutoff: string
+  today?: Date
+}): ForecastSnapshot {
+  const today = startOfDay(input.today ?? new Date())
+  return computeRoadmapSnapshot(input.player, input.config, input.patches, parseISO(input.cutoff), today)
+}
+
 export function runProjection(input: EngineInput): ForecastResult {
   const { player, config, patches, target } = input
   const today = startOfDay(input.today ?? new Date())
@@ -671,17 +683,15 @@ export function runChain(input: {
     const availableAtStart = snapStart.totalPulls - deficit
     const availableAtEnd = snapEnd.totalPulls - deficit
 
-    // Reach the complete target when possible; otherwise reach one 5-star if
-    // possible. Pulls below the next pity threshold remain banked for later.
-    const plannedSpend = availableAtEnd >= thresholds.targetGuarantee
-      ? thresholds.targetGuarantee
-      : availableAtEnd >= thresholds.nextFiveStar
-        ? thresholds.nextFiveStar
-        : 0
+    // All-in up to the guarantee: spend every pull available by the banner's
+    // end, but never more than the worst case needs. The chance below is
+    // computed on this same spend, and later banners only get what is left, so
+    // two banners can never both count the same pulls.
+    const plannedSpend = Math.max(0, Math.min(availableAtEnd, thresholds.targetGuarantee))
     const actualSpend = plannedSpend
-    const canAfford = actualSpend > 0
+    const canAfford = availableAtEnd >= thresholds.nextFiveStar
 
-    if (canAfford) {
+    if (actualSpend > 0) {
       deficit += actualSpend
       pityCarry[type] = applyChainSpend(type, stateBefore, actualSpend)
     }
@@ -698,6 +708,8 @@ export function runChain(input: {
       daysToStop,
       daysToEnd,
       pullsToSpend: plannedSpend,
+      pullsToNextFiveStar: thresholds.nextFiveStar,
+      pullsForGuarantee: thresholds.targetGuarantee,
       availableAtStart,
       rewardsDuringBanner: Math.max(0, availableAtEnd - availableAtStart),
       availableAtEnd,
@@ -713,7 +725,7 @@ export function runChain(input: {
       successChance: chanceOfSuccess(
         bannerOdds(config, type),
         { pity: stateBefore.pity, guaranteed: stateBefore.guaranteed || stateBefore.fatePoints > 0 },
-        Math.max(0, availableAtEnd),
+        actualSpend,
         copies,
       ),
     })

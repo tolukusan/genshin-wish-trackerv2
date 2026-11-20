@@ -52,7 +52,7 @@ export function NumberInput({ label, value, onChange, min = 0, max, step = 1, hi
         onBlur={(e) => commit(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value) }}
       />
-      {hint && <p className="text-xs" style={{ color: '#64748b', fontSize: '0.75rem' }}>{hint}</p>}
+      {hint && <p className="text-xs" style={{ color: 'var(--color-neutral-400)', fontSize: '0.75rem' }}>{hint}</p>}
     </div>
   )
 }

@@ -145,8 +145,8 @@ export function PityVisual({ compact = false }: { compact?: boolean }) {
               aria-pressed={type === t}
               className="text-xs px-2.5 py-1 rounded-md border"
               style={type === t
-                ? { background: 'rgba(124,58,237,0.1)', borderColor: 'rgba(124,58,237,0.45)', color: '#5b21b6', fontWeight: 600 }
-                : { background: '#fff', borderColor: '#cbd5e1', color: VIZ.textSecondary }}
+                ? { background: 'rgba(145,132,217,0.1)', borderColor: 'rgba(145,132,217,0.45)', color: 'var(--color-accent-300)', fontWeight: 600 }
+                : { background: 'var(--color-surface)', borderColor: 'var(--color-neutral-700)', color: VIZ.textSecondary }}
             >
               {t === 'character' ? 'Character & Chronicled' : 'Weapon'}
             </button>

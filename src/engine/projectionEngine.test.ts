@@ -82,8 +82,11 @@ describe('runChain', () => {
       stop('c', 'p75', 1, 'chronicled'),
     ]
     const r = runChain({ player: { ...player, chronicleBannerPity: 10 }, config, patches, chain, today })
-    // Stop a can only afford the next 5-star; worst case it is off-target and earns a Fate Point.
-    expect(r[0].actualSpend).toBe(80)
+    // Stop a reaches the next 5-star (80 pulls) but not the 170-pull guarantee, so it
+    // goes all-in; worst case that 5-star is off-target and earns a Fate Point.
+    expect(r[0].availableAtEnd).toBeGreaterThanOrEqual(80)
+    expect(r[0].availableAtEnd).toBeLessThan(170)
+    expect(r[0].actualSpend).toBe(r[0].availableAtEnd)
     expect(r[0].fatePointsAfter).toBe(1)
     // Stop b: same event, so the Fate Point still applies.
     expect(r[1].fatePointsBefore).toBe(1)
@@ -98,6 +101,38 @@ describe('runChain', () => {
     // 2 copies worst case: lose, win, lose, win = 4 × 80.
     expect(r[0].actualSpend).toBe(320)
     expect(r[0].fatePointsAfter).toBe(0)
+  })
+
+  it('goes all-in up to the guarantee and never spends more than it has', () => {
+    const chain = [stop('a', 'p73', 1, 'character')]
+    const [poor] = runChain({ player, config, patches, chain, today })
+    expect(poor.availableAtEnd).toBeLessThan(poor.pullsForGuarantee)
+    expect(poor.actualSpend).toBe(poor.availableAtEnd)
+    expect(poor.remainingAfter).toBe(0)
+    const [lots] = runChain({ player: rich, config, patches, chain, today })
+    expect(lots.actualSpend).toBe(lots.pullsForGuarantee)
+  })
+
+  it('subtracts an all-in spend even when it cannot reach a 5-star', () => {
+    const chain = [stop('a', 'p73', 1, 'character'), stop('b', 'p73', 1, 'weapon')]
+    const [first, second] = runChain({ player, config, patches, chain, today })
+    expect(first.canAfford).toBe(false)
+    expect(first.actualSpend).toBe(first.availableAtEnd)
+    expect(second.availableAtEnd).toBe(0)
+    expect(second.actualSpend).toBe(0)
+    // Pity still rises by the pulls spent, with no 5-star in the worst case.
+    expect(first.pityAfter).toBe(first.actualSpend)
+  })
+
+  it('does not let two banners on the same phase count the same pulls', () => {
+    const some = { ...player, intertwinedFates: 60 }
+    const chain = [stop('a', 'p73', 1, 'character'), stop('b', 'p73', 1, 'weapon')]
+    const [first, second] = runChain({ player: some, config, patches, chain, today })
+    expect(second.availableAtEnd).toBe(first.availableAtEnd - first.actualSpend)
+    expect(first.actualSpend + second.actualSpend).toBeLessThanOrEqual(first.availableAtEnd)
+    // The weapon only sees what the character banner left, so its chance is lower than if it were alone.
+    const [alone] = runChain({ player: some, config, patches, chain: [stop('b', 'p73', 1, 'weapon')], today })
+    expect(second.successChance).toBeLessThan(alone.successChance)
   })
 
   it('reports a chance of success for every stop', () => {

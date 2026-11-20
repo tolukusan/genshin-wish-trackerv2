@@ -171,11 +171,13 @@ export interface ChainStopResult {
   daysToStop: number
   daysToEnd: number
   pullsToSpend: number      // computed pity milestone; retained as a result field for compatibility
+  pullsToNextFiveStar: number // worst case pulls to reach the next 5-star from pityBefore
+  pullsForGuarantee: number   // worst case pulls to secure every wanted copy from pityBefore
   availableAtStart: number  // pulls on hand when banner opens (after prior spending)
   rewardsDuringBanner: number // estimated pulls earned during this banner phase
   availableAtEnd: number    // pulls on hand at banner end (after prior spending)
-  actualSpend: number       // the largest reachable pity milestone, or 0
-  canAfford: boolean        // availableAtEnd reaches at least the next 5-star milestone
+  actualSpend: number       // all-in up to the guarantee: min(availableAtEnd, pullsForGuarantee)
+  canAfford: boolean        // availableAtEnd reaches at least the next 5-star (worst case)
   remainingAfter: number    // availableAtEnd - actualSpend (always >= 0)
   pityBefore: number
   guaranteedBefore: boolean
@@ -183,9 +185,11 @@ export interface ChainStopResult {
   pityAfter: number
   guaranteedAfter: boolean
   fatePointsAfter: number
-  successChance: number     // chance of getting all copies if every pull available by banner end goes here
+  successChance: number     // chance of getting all copies with actualSpend pulls
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
-export type NavTab = 'next-character' | 'data-entry' | 'patches' | 'roadmap' | 'settings' | 'guide'
+// 'roadmap' is the Plan tab and 'data-entry' is the Wallet tab; the ids are kept
+// so saved state from older versions still opens the right screen.
+export type NavTab = 'next-character' | 'data-entry' | 'patches' | 'roadmap' | 'settings' | 'guide' | 'more'
